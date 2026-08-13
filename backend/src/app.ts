@@ -19,7 +19,16 @@ import { systemRouter } from './modules/system/system.routes.js'
 export const app = express()
 app.set('trust proxy', true)
 
-app.use(cors({ origin: env.FRONTEND_URL }))
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || env.FRONTEND_URL === '*' || env.FRONTEND_URL.split(',').map(s => s.trim()).includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(null, true)
+    }
+  },
+  credentials: true,
+}))
 app.use(express.json({ limit: '1mb' }))
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }))
