@@ -77,7 +77,7 @@ authRouter.get('/google/url', async (_req, res, next) => {
     const client = createOAuthClient(config)
     const url = client.generateAuthUrl({
       access_type: 'offline',
-      prompt: 'consent',
+      prompt: 'select_account',
       include_granted_scopes: true,
       scope: config.scopes as string[],
       state,

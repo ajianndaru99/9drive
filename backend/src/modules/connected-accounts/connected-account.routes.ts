@@ -75,7 +75,7 @@ async function createGoogleConnectUrl(req: AuthRequest) {
   const client = createOAuthClient(config)
   return client.generateAuthUrl({
     access_type: 'offline',
-    prompt: 'consent',
+    prompt: 'select_account',
     include_granted_scopes: true,
     scope: config.scopes as string[],
     state,
