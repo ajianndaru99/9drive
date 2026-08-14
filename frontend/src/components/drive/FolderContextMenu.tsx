@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Copy, Edit3, FolderOpen, Scissors, Trash2, UserPlus } from 'lucide-react'
 import type { FolderItem } from '@/data/drive-data'
 
@@ -45,8 +46,39 @@ function MenuItem({ icon: Icon, label, onClick, danger = false, kbd }: { icon: R
 
 export function FolderContextMenu({ x, y, folder, onClose, onCut, onRename, onInvite, onCopyLink, onDelete }: Props) {
   if (!folder) return null
-  const safeX = Math.max(12, Math.min(x, window.innerWidth - 228))
-  const safeY = Math.max(12, Math.min(y, window.innerHeight - 280))
+
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number }>({
+    top: Math.max(12, Math.min(y, window.innerHeight - 300)),
+    left: Math.max(12, Math.min(x, window.innerWidth - 236)),
+  })
+
+  useLayoutEffect(() => {
+    if (!menuRef.current) return
+    const rect = menuRef.current.getBoundingClientRect()
+    const menuWidth = rect.width || 224
+    const menuHeight = rect.height || 280
+    const padding = 12
+
+    let nextX = x
+    let nextY = y
+
+    if (nextX + menuWidth > window.innerWidth - padding) {
+      nextX = Math.max(padding, window.innerWidth - menuWidth - padding)
+    }
+    if (nextX < padding) nextX = padding
+
+    if (nextY + menuHeight > window.innerHeight - padding) {
+      if (y - menuHeight >= padding) {
+        nextY = y - menuHeight
+      } else {
+        nextY = Math.max(padding, window.innerHeight - menuHeight - padding)
+      }
+    }
+    if (nextY < padding) nextY = padding
+
+    setPos({ left: nextX, top: nextY })
+  }, [x, y])
 
   return (
     <>
@@ -56,11 +88,12 @@ export function FolderContextMenu({ x, y, folder, onClose, onCut, onRename, onIn
         onClick={onClose}
       />
       <div
-        className="fixed z-50 w-56 overflow-hidden rounded-2xl border border-slate-200/70 bg-white/95 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-slate-800/70 dark:bg-slate-900/95"
+        ref={menuRef}
+        className="fixed z-50 w-56 max-h-[calc(100vh-24px)] overflow-y-auto rounded-2xl border border-slate-200/80 bg-white/95 shadow-2xl shadow-slate-950/20 backdrop-blur-2xl dark:border-slate-800/80 dark:bg-slate-900/95 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700"
         style={
           window.innerWidth >= 640
-            ? { left: safeX, top: safeY }
-            : { insetInline: '0.75rem', bottom: '0.75rem', position: 'fixed' }
+            ? { left: pos.left, top: pos.top }
+            : { insetInline: '0.75rem', bottom: '0.75rem', position: 'fixed', maxHeight: 'calc(100vh - 1.5rem)' }
         }
       >
         {/* Header */}

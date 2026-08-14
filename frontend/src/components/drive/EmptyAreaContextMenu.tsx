@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react'
 import { ClipboardPaste, FolderPlus, Upload } from 'lucide-react'
 
 type Props = {
@@ -38,8 +39,39 @@ function MenuItem({ icon: Icon, label, onClick, accent = false }: { icon: React.
 
 export function EmptyAreaContextMenu({ x, y, open, canPasteFolder = false, onClose, onUpload, onCreateFolder, onPasteFolder }: Props) {
   if (!open) return null
-  const safeX = Math.max(12, Math.min(x, window.innerWidth - 228))
-  const safeY = Math.max(12, Math.min(y, window.innerHeight - 160))
+
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number }>({
+    top: Math.max(12, Math.min(y, window.innerHeight - 160)),
+    left: Math.max(12, Math.min(x, window.innerWidth - 220)),
+  })
+
+  useLayoutEffect(() => {
+    if (!menuRef.current) return
+    const rect = menuRef.current.getBoundingClientRect()
+    const menuWidth = rect.width || 208
+    const menuHeight = rect.height || 140
+    const padding = 12
+
+    let nextX = x
+    let nextY = y
+
+    if (nextX + menuWidth > window.innerWidth - padding) {
+      nextX = Math.max(padding, window.innerWidth - menuWidth - padding)
+    }
+    if (nextX < padding) nextX = padding
+
+    if (nextY + menuHeight > window.innerHeight - padding) {
+      if (y - menuHeight >= padding) {
+        nextY = y - menuHeight
+      } else {
+        nextY = Math.max(padding, window.innerHeight - menuHeight - padding)
+      }
+    }
+    if (nextY < padding) nextY = padding
+
+    setPos({ left: nextX, top: nextY })
+  }, [x, y])
 
   return (
     <>
@@ -49,11 +81,12 @@ export function EmptyAreaContextMenu({ x, y, open, canPasteFolder = false, onClo
         onClick={onClose}
       />
       <div
-        className="fixed z-50 w-52 overflow-hidden rounded-2xl border border-slate-200/70 bg-white/95 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-slate-800/70 dark:bg-slate-900/95"
+        ref={menuRef}
+        className="fixed z-50 w-52 max-h-[calc(100vh-24px)] overflow-y-auto rounded-2xl border border-slate-200/80 bg-white/95 shadow-2xl shadow-slate-950/20 backdrop-blur-2xl dark:border-slate-800/80 dark:bg-slate-900/95 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700"
         style={
           window.innerWidth >= 640
-            ? { left: safeX, top: safeY }
-            : { insetInline: '0.75rem', bottom: '0.75rem', position: 'fixed' }
+            ? { left: pos.left, top: pos.top }
+            : { insetInline: '0.75rem', bottom: '0.75rem', position: 'fixed', maxHeight: 'calc(100vh - 1.5rem)' }
         }
       >
         <div className="p-1.5">
