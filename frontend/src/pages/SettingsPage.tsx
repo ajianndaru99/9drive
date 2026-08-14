@@ -402,20 +402,20 @@ export function SettingsPage() {
             </div>
           </Card>
 
-          <Card className="p-4">
-            <h2 className="text-[16px] font-bold">Connected Storage Accounts</h2>
+          <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <h2 className="text-[16px] font-bold text-slate-900 dark:text-white">Connected Storage Accounts</h2>
             <div className="mt-3.5 grid gap-3">
-              {accounts.length === 0 ? <p className="text-xs text-slate-500">No connected storage account yet.</p> : <>
-                <label className="grid gap-1.5 text-xs font-semibold text-slate-500">Choose Account<select className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none" value={selectedAccount?.id ?? ''} onChange={(event) => setSelectedAccountId(event.target.value)}>{accounts.map((account) => <option key={account.id} value={account.id}>{providerLabel(account.provider)} - {account.displayName || account.email} ({account.status})</option>)}</select></label>
-                {selectedAccount ? <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+              {accounts.length === 0 ? <p className="text-xs text-slate-500 dark:text-slate-400">No connected storage account yet.</p> : <>
+                <label className="grid gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Choose Account<select className="h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 text-sm focus:outline-none" value={selectedAccount?.id ?? ''} onChange={(event) => setSelectedAccountId(event.target.value)}>{accounts.map((account) => <option key={account.id} value={account.id}>{providerLabel(account.provider)} - {account.displayName || account.email} ({account.status})</option>)}</select></label>
+                {selectedAccount ? <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 border border-slate-200/60 dark:border-slate-700/60">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0"><p className="break-all font-semibold text-sm">{selectedAccount.displayName || selectedAccount.email}</p><p className="text-xs text-slate-500 mt-0.5">{providerLabel(selectedAccount.provider)} · {selectedAccount.status}</p></div>
+                    <div className="min-w-0"><p className="break-all font-semibold text-sm text-slate-900 dark:text-white">{selectedAccount.displayName || selectedAccount.email}</p><p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{providerLabel(selectedAccount.provider)} · {selectedAccount.status}</p></div>
                     <div className="grid grid-cols-2 gap-2 sm:flex"><Button className="w-full" size="sm" variant="outline" onClick={() => sync(selectedAccount.id)} disabled={syncingAccountId === selectedAccount.id}><RefreshCw className={syncingAccountId === selectedAccount.id ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />{syncingAccountId === selectedAccount.id ? 'Syncing...' : 'Sync'}</Button><Button className="w-full" size="sm" variant="danger" onClick={() => setAccountToDisconnect(selectedAccount)}><Trash2 className="h-4 w-4" />Disconnect</Button></div>
                   </div>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="rounded-xl bg-white dark:bg-slate-950 p-2 border border-slate-100 dark:border-slate-800"><p className="font-extrabold text-slate-950">{formatBytes(selectedAccount.storageAccount?.usedBytes)}</p><p className="mt-0.5 text-[10px] text-slate-500">Used</p></div>
-                    <div className="rounded-xl bg-white dark:bg-slate-950 p-2 border border-slate-100 dark:border-slate-800"><p className="font-extrabold text-slate-950">{storageLimitLabel(selectedAccount)}</p><p className="mt-0.5 text-[10px] text-slate-500">Total</p></div>
-                    <div className="rounded-xl bg-white dark:bg-slate-950 p-2 border border-slate-100 dark:border-slate-800"><p className="font-extrabold text-slate-950">{availableLabel(selectedAccount)}</p><p className="mt-0.5 text-[10px] text-slate-500">Free</p></div>
+                    <div className="rounded-xl bg-white dark:bg-slate-800 p-2 border border-slate-200/60 dark:border-slate-700"><p className="font-extrabold text-slate-900 dark:text-white">{formatBytes(selectedAccount.storageAccount?.usedBytes)}</p><p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">Used</p></div>
+                    <div className="rounded-xl bg-white dark:bg-slate-800 p-2 border border-slate-200/60 dark:border-slate-700"><p className="font-extrabold text-slate-900 dark:text-white">{storageLimitLabel(selectedAccount)}</p><p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">Total</p></div>
+                    <div className="rounded-xl bg-white dark:bg-slate-800 p-2 border border-slate-200/60 dark:border-slate-700"><p className="font-extrabold text-slate-900 dark:text-white">{availableLabel(selectedAccount)}</p><p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">Free</p></div>
                   </div>
                 </div> : null}
               </>}
@@ -631,8 +631,8 @@ export function SettingsPage() {
       </DummyModal>
       <DummyModal open={Boolean(accountToDisconnect)} title="Disconnect storage?" description="This will remove this storage account from 9Drive. Existing file records for this account may no longer be usable." onClose={() => setAccountToDisconnect(null)}>
         <div className="grid gap-4">
-          <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-            <p className="font-semibold text-slate-950">{accountToDisconnect?.email}</p>
+          <div className="rounded-xl bg-slate-50 dark:bg-slate-800/80 p-4 text-sm text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
+            <p className="font-semibold text-slate-900 dark:text-white">{accountToDisconnect?.email}</p>
             <p className="mt-1">Used storage: {formatBytes(accountToDisconnect?.storageAccount?.usedBytes)}</p>
           </div>
           <div className="grid gap-3 sm:flex sm:justify-end">
