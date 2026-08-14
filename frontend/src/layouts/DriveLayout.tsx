@@ -173,14 +173,14 @@ function Sidebar({
   }, [userMenuOpen])
 
   return (
-    <aside className="flex h-full w-64 flex-col border-slate-200/80 bg-white dark:border-slate-800/80 dark:bg-[#0b1120] p-4 lg:border-r transition-colors duration-200">
+    <aside className="flex h-full w-64 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-4 transition-colors duration-200">
       <div className="flex items-center gap-2.5 pb-3 pt-1">
         <BrandLogo className="h-8 w-8" />
-        <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">9Drive</span>
+        <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">9Drive</span>
       </div>
 
       <div ref={userMenuRef} className="relative">
-        <div className="flex items-center gap-2.5 border-y border-slate-200/60 dark:border-slate-800/80 py-3 my-3">
+        <div className="flex items-center gap-2.5 border-y border-slate-100 dark:border-slate-800 py-3 my-3">
           {!profileImageUrl || avatarError ? (
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-sm border border-blue-400/20">
               {(user?.name ?? user?.email ?? 'U').trim().charAt(0).toUpperCase()}
@@ -194,13 +194,13 @@ function Sidebar({
             />
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-bold text-slate-900 dark:text-slate-100 leading-none">{user?.name ?? 'User'}</p>
+            <p className="truncate text-sm font-bold text-slate-900 dark:text-white leading-none">{user?.name ?? 'User'}</p>
             <p className="truncate text-xs text-slate-500 dark:text-slate-400 mt-1">{user?.email ?? 'Loading...'}</p>
           </div>
           <button
             type="button"
             onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200/70 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
             aria-label="User account options"
           >
             <MoreVertical className="h-4 w-4" />
@@ -210,10 +210,9 @@ function Sidebar({
         {/* Interactive User Avatar 3-Dots Menu Popover */}
         {userMenuOpen && (
           <div
-            className="absolute left-0 right-0 top-16 z-[100] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-800 dark:bg-[#0d1424] user-menu-popover animate-in fade-in slide-in-from-top-2 duration-150"
-            style={{ backgroundColor: theme === 'dark' ? '#0d1424' : '#ffffff' }}
+            className="absolute left-0 right-0 top-16 z-[100] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-700 dark:bg-slate-800 user-menu-popover animate-in fade-in slide-in-from-top-2 duration-150"
           >
-            <div className="border-b border-slate-100 dark:border-slate-800/80 px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl mb-1.5">
+            <div className="border-b border-slate-100 dark:border-slate-700/80 px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl mb-1.5">
               <p className="truncate text-xs font-bold text-slate-900 dark:text-white">{user?.name ?? 'User Account'}</p>
               <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{user?.email}</p>
             </div>
@@ -226,7 +225,7 @@ function Sidebar({
                   onNavigate?.()
                   navigate('/settings')
                 }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/70 transition-colors"
               >
                 <Settings className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                 <span>Account & Drive Settings</span>
@@ -239,7 +238,7 @@ function Sidebar({
                   onNavigate?.()
                   navigate('/quota')
                 }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/70 transition-colors"
               >
                 <Gauge className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>Storage Quota Tracker</span>
@@ -252,7 +251,7 @@ function Sidebar({
                   onNavigate?.()
                   navigate('/activity')
                 }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/70 transition-colors"
               >
                 <History className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Activity & Audit Log</span>
@@ -265,7 +264,7 @@ function Sidebar({
                   onNavigate?.()
                   navigate('/api')
                 }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/70 transition-colors"
               >
                 <Braces className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
                 <span>API Keys & Webhooks</span>
@@ -277,16 +276,16 @@ function Sidebar({
                   onClick={() => {
                     onToggleTheme()
                   }}
-                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/70 transition-colors"
                 >
                   <span className="flex items-center gap-2.5">
-                    {theme === 'light' ? <Moon className="h-3.5 w-3.5 text-slate-600" /> : <Sun className="h-3.5 w-3.5 text-amber-500" />}
+                    {theme === 'light' ? <Moon className="h-3.5 w-3.5 text-slate-600" /> : <Sun className="h-3.5 w-3.5 text-amber-400" />}
                     <span>{theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}</span>
                   </span>
                 </button>
               )}
 
-              <div className="my-1.5 h-px bg-slate-100 dark:bg-slate-800" />
+              <div className="my-1.5 h-px bg-slate-100 dark:bg-slate-700/80" />
 
               <button
                 type="button"
@@ -306,36 +305,46 @@ function Sidebar({
 
       <nav className="grid gap-1">
         {menu.map((item) => item.disabled ? (
-          <button key={item.label} type="button" disabled className="inline-flex h-10 cursor-not-allowed items-center gap-2 rounded-xl px-3.5 text-[13px] font-bold text-slate-400 opacity-60">
+          <button key={item.label} type="button" disabled className="inline-flex h-10 cursor-not-allowed items-center gap-2.5 rounded-xl px-3.5 text-[13px] font-semibold text-slate-400 dark:text-slate-600 opacity-60">
             <item.icon className="h-4 w-4" />
             {item.label}
           </button>
         ) : (
-          <NavLink key={item.label} to={item.href} onClick={onNavigate} className={({ isActive }) => cn('inline-flex h-10 items-center gap-2.5 rounded-xl px-3.5 text-[13px] font-bold transition-all border border-transparent', isActive ? 'bg-blue-600/10 text-blue-600 border-blue-600/10 shadow-sm' : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900')}>
+          <NavLink
+            key={item.label}
+            to={item.href}
+            onClick={onNavigate}
+            className={({ isActive }) => cn(
+              'inline-flex h-10 items-center gap-2.5 rounded-xl px-3.5 text-[13px] font-semibold transition-all border border-transparent',
+              isActive
+                ? 'bg-blue-50 text-blue-600 border-blue-200/70 shadow-sm dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50 font-bold'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white'
+            )}
+          >
             <item.icon className="h-4 w-4" />
             {item.label}
           </NavLink>
         ))}
       </nav>
 
-      <div className="mt-auto border-t border-slate-200/60 pt-4 text-[13px]">
+      <div className="mt-auto border-t border-slate-200 dark:border-slate-800 pt-4 text-[13px]">
         <div className="mb-3 space-y-1.5">
           {items.map(([label, value, color]) => (
-            <div key={label} className="flex items-center justify-between text-slate-500 font-medium">
+            <div key={label} className="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
               <span className="flex items-center gap-1.5"><span className={cn('h-1.5 w-1.5 rounded-full', color)} />{label}</span>
-              <span className="font-semibold text-slate-700">{value}</span>
+              <span className="font-bold text-slate-700 dark:text-slate-200">{value}</span>
             </div>
           ))}
         </div>
-        <div className="flex justify-between text-sm font-bold text-slate-700">
+        <div className="flex justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
           <span>{formatBytes(storage?.usedBytes)} used</span>
-          <span className="text-slate-400">{formatBytes(storage?.totalBytes)}</span>
+          <span className="text-slate-400 dark:text-slate-500">{formatBytes(storage?.totalBytes)}</span>
         </div>
-        <div className="my-2 h-1.5 rounded-full bg-slate-200/60 overflow-hidden">
-          <div className="h-full rounded-full bg-blue-600 transition-all duration-300" style={{ width: `${progress}%` }} />
+        <div className="my-2 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+          <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-500 transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
-        <Button variant="danger" size="sm" className="mt-3 w-full justify-start h-10 px-3 text-[13px] font-bold" onClick={onLogout}>
-          <LogOut className="h-4 w-4" />Log Out
+        <Button variant="danger" size="sm" className="mt-3 w-full justify-start h-9 px-3 text-xs font-bold" onClick={onLogout}>
+          <LogOut className="h-3.5 w-3.5" />Log Out
         </Button>
       </div>
     </aside>

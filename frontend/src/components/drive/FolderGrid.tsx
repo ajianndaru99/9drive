@@ -87,15 +87,15 @@ export function FolderGrid({
           )}
         >
           <button
-            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 sm:right-3 sm:top-3"
+            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 sm:right-3 sm:top-3 transition-colors"
             onClick={(event) => { event.stopPropagation(); onFolderMenu?.(event, folder) }}
             aria-label={`Open ${folder.name} menu`}
           >
             <MoreVertical className="h-4 w-4" />
           </button>
           <FolderVisual folder={folder} className={cn('transition group-hover:scale-110', cfg.icon)} />
-          <h2 className={cn('line-clamp-2 text-center font-extrabold leading-tight', cfg.title)}>{folder.name}</h2>
-          <p className={cn('line-clamp-1 text-center text-slate-500', cfg.sub)}>{folder.updated}</p>
+          <h2 className={cn('line-clamp-2 text-center font-extrabold leading-tight text-slate-900 dark:text-slate-100', cfg.title)}>{folder.name}</h2>
+          <p className={cn('line-clamp-1 text-center text-slate-500 dark:text-slate-400', cfg.sub)}>{folder.updated}</p>
         </Card>
       ))}
     </div>
