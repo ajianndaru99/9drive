@@ -25,7 +25,7 @@ import { useUpload } from '@/context/UploadContext'
 import { useDriveLayoutActions } from '@/layouts/DriveLayout'
 
 type BackendFile = { id: string; name: string; mimeType: string; sizeBytes: string; createdAt: string; folderId?: string | null; connectedAccountId?: string | null; connectedAccount?: { id?: string; email: string; provider: string }; folder?: { id: string; name: string } | null }
-type BackendFolder = { id: string; name: string; color: string; iconUrl?: string | null; parentId?: string | null; providerFolderId?: string | null; connectedAccountId?: string | null; updatedAt: string }
+type BackendFolder = { id: string; name: string; color: string; iconUrl?: string | null; parentId?: string | null; providerFolderId?: string | null; connectedAccountId?: string | null; connectedAccount?: { email: string; provider: string } | null; updatedAt: string }
 type ConnectedAccount = ConnectedAccountItem
 
 const sizeActiveClasses: Record<FolderSizeScale, string> = {
@@ -61,7 +61,7 @@ function mapFile(file: BackendFile): FileItem {
 }
 
 function mapFolder(folder: BackendFolder): FolderItem {
-  return { id: folder.id, name: folder.name, color: folder.color, iconUrl: folder.iconUrl, parentId: folder.parentId, providerFolderId: folder.providerFolderId, updated: `Updated ${formatDate(folder.updatedAt)}` }
+  return { id: folder.id, name: folder.name, color: folder.color, iconUrl: folder.iconUrl, parentId: folder.parentId, providerFolderId: folder.providerFolderId, connectedAccountId: folder.connectedAccountId, accountEmail: folder.connectedAccount?.email, accountProvider: providerLabel(folder.connectedAccount?.provider), updated: `Updated ${formatDate(folder.updatedAt)}` }
 }
 
 

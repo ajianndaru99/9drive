@@ -6,6 +6,9 @@ export type FolderItem = {
   iconUrl?: string | null
   parentId?: string | null
   providerFolderId?: string | null
+  connectedAccountId?: string | null
+  accountEmail?: string | null
+  accountProvider?: string | null
   isStarred?: boolean
   isArchived?: boolean
   lastOpenedAt?: string | null

@@ -12,6 +12,8 @@ export interface ConnectedAccountItem {
   status: string
   storageAccount?: {
     usedBytes?: string | number | null
+    totalBytes?: string | number | null
+    availableBytes?: string | number | null
     limitBytes?: string | number | null
   } | null
 }
@@ -35,7 +37,7 @@ export function DriveAccountTabs({
 
   // Calculate total combined stats
   const totalUsed = accounts.reduce((acc, a) => acc + BigInt(a.storageAccount?.usedBytes ?? '0'), 0n)
-  const totalLimit = accounts.reduce((acc, a) => acc + BigInt(a.storageAccount?.limitBytes ?? '16106127360'), 0n)
+  const totalLimit = accounts.reduce((acc, a) => acc + BigInt(a.storageAccount?.totalBytes ?? a.storageAccount?.limitBytes ?? '16106127360'), 0n)
   const percentTotal = totalLimit > 0n ? Math.min(100, Math.round(Number((totalUsed * 100n) / totalLimit))) : 0
 
   const activeAccount = accounts.find((a) => a.id === selectedAccountId)
@@ -80,7 +82,7 @@ export function DriveAccountTabs({
         {accounts.map((account) => {
           const isSelected = selectedAccountId === account.id
           const used = BigInt(account.storageAccount?.usedBytes ?? '0')
-          const limit = BigInt(account.storageAccount?.limitBytes ?? '16106127360')
+          const limit = BigInt(account.storageAccount?.totalBytes ?? account.storageAccount?.limitBytes ?? '16106127360')
           const percent = limit > 0n ? Math.min(100, Math.round(Number((used * 100n) / limit))) : 0
 
           return (

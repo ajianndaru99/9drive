@@ -21,8 +21,8 @@ const createSchema = z.object({
   parentId: z.string().nullable().optional(),
 })
 
-function serializeFolder(folder: { id: string; name: string; color: string; iconUrl?: string | null; parentId?: string | null; providerFolderId?: string | null; createdAt: Date; updatedAt: Date }) {
-  return { ...folder, providerFolderId: folder.providerFolderId ?? null, createdAt: folder.createdAt.toISOString(), updatedAt: folder.updatedAt.toISOString() }
+function serializeFolder(folder: { id: string; name: string; color: string; iconUrl?: string | null; parentId?: string | null; providerFolderId?: string | null; connectedAccountId?: string | null; connectedAccount?: { email: string; provider: string } | null; createdAt: Date; updatedAt: Date }) {
+  return { ...folder, providerFolderId: folder.providerFolderId ?? null, connectedAccountId: folder.connectedAccountId ?? null, connectedAccount: folder.connectedAccount ?? null, createdAt: folder.createdAt.toISOString(), updatedAt: folder.updatedAt.toISOString() }
 }
 
 async function ensureProviderFolderIds(
@@ -133,7 +133,7 @@ folderRouter.get('/', async (req: AuthRequest, res, next) => {
         ...(query.accountId ? { connectedAccountId: query.accountId } : {}),
         ...(query.all === '1' ? {} : { parentId: query.parentId ?? null })
       },
-      select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, isStarred: true, isArchived: true, createdAt: true, updatedAt: true },
+      select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, connectedAccountId: true, connectedAccount: { select: { email: true, provider: true } }, isStarred: true, isArchived: true, createdAt: true, updatedAt: true },
       orderBy: { updatedAt: 'desc' },
     })
     await ensureProviderFolderIds(folders, req.user!.id)

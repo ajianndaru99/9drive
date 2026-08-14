@@ -96,6 +96,11 @@ export function FolderGrid({
           <FolderVisual folder={folder} className={cn('transition group-hover:scale-110', cfg.icon)} />
           <h2 className={cn('line-clamp-2 text-center font-extrabold leading-tight text-slate-900 dark:text-slate-100', cfg.title)}>{folder.name}</h2>
           <p className={cn('line-clamp-1 text-center text-slate-500 dark:text-slate-400', cfg.sub)}>{folder.updated}</p>
+          {folder.accountEmail && (
+            <span className="mt-1 inline-flex max-w-[90%] items-center truncate rounded-md bg-blue-50/80 dark:bg-blue-950/60 px-1.5 py-0.5 text-[9px] font-semibold text-blue-600 dark:text-blue-400">
+              {folder.accountEmail}
+            </span>
+          )}
         </Card>
       ))}
     </div>
