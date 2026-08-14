@@ -86,6 +86,68 @@ export async function syncS3Quota(accountId: string) {
   })
 }
 
+function inferMimeType(fileName: string): string {
+  const ext = fileName.split('.').pop()?.toLowerCase() ?? ''
+  const map: Record<string, string> = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+    mp4: 'video/mp4', mkv: 'video/x-matroska', webm: 'video/webm', mov: 'video/quicktime', avi: 'video/x-msvideo',
+    pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ppt: 'application/vnd.ms-powerpoint', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    zip: 'application/zip', rar: 'application/x-rar-compressed', '7z': 'application/x-7z-compressed', tar: 'application/x-tar', gz: 'application/gzip',
+    txt: 'text/plain', csv: 'text/csv', json: 'application/json', js: 'text/javascript', ts: 'text/typescript', html: 'text/html', css: 'text/css'
+  }
+  return map[ext] || 'application/octet-stream'
+}
+
+export async function syncS3BucketFiles(accountId: string, userId: string) {
+  const config = await getS3ConfigForAccount(accountId, userId)
+  const client = createS3Client(config)
+  let continuationToken: string | undefined
+  let created = 0
+  let updated = 0
+
+  do {
+    const response = await client.send(new ListObjectsV2Command({ Bucket: config.bucket, ContinuationToken: continuationToken }))
+    for (const object of response.Contents ?? []) {
+      if (!object.Key || object.Key.endsWith('/')) continue
+      const fileName = object.Key.split('/').pop() || object.Key
+      const mimeType = inferMimeType(fileName)
+      const sizeBytes = BigInt(object.Size ?? 0)
+
+      const existing = await prisma.file.findFirst({
+        where: { userId, connectedAccountId: accountId, providerFileId: object.Key }
+      })
+
+      if (!existing) {
+        await prisma.file.create({
+          data: {
+            userId,
+            connectedAccountId: accountId,
+            provider: 's3',
+            providerFileId: object.Key,
+            name: fileName,
+            mimeType,
+            sizeBytes,
+            status: 'active'
+          }
+        })
+        created += 1
+      } else if (existing.sizeBytes !== sizeBytes || existing.status !== 'active' || existing.deletedAt !== null) {
+        await prisma.file.update({
+          where: { id: existing.id },
+          data: { sizeBytes, status: 'active', deletedAt: null }
+        })
+        updated += 1
+      }
+    }
+    continuationToken = response.NextContinuationToken
+  } while (continuationToken)
+
+  await syncS3Quota(accountId)
+  return { accountId, created, updated, deleted: 0 }
+}
+
 export async function streamS3File(file: FileWithAccount, range: string | undefined, res: Response, options: StreamOptions = {}) {
   const config = await getS3ConfigForAccount(file.connectedAccountId)
   const client = createS3Client(config)

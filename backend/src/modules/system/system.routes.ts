@@ -20,7 +20,7 @@ systemRouter.post('/update', requireAuth, requireAdmin, (req, res, next) => {
     if (gitError) {
       return res.status(400).json({
         code: 'GIT_NOT_FOUND',
-        message: 'Git is not installed inside the app container. Since you are running 9Drive in Docker, please update by running:\n\n1. ssh root@103.65.237.136\n2. cd 9drive\n3. git pull\n4. docker-compose down && docker-compose up -d --build\n\ndirectly in your VPS host terminal.'
+        message: 'Git is not installed inside the app container. Since you are running 9Drive in Docker, please update by running:\n\n1. cd 9drive\n2. git pull\n3. docker-compose down && docker-compose up -d --build\n\ndirectly in your host terminal.'
       })
     }
 
@@ -201,16 +201,39 @@ systemRouter.post('/google-config', requireAuth, requireAdmin, async (req, res, 
   }
 })
 
-systemRouter.get('/backup', requireAuth, requireAdmin, (req, res, next) => {
+systemRouter.get('/backup', requireAuth, requireAdmin, async (_req, res, next) => {
   try {
-    const dbPath = getDatabaseFilePath()
-    if (!fs.existsSync(dbPath)) {
-      return res.status(404).json({ code: 'NOT_FOUND', message: 'Database file not found.' })
+    const [users, providerConfigs, connectedAccounts, s3Configs, folders, files, fileShares, apiKeys, policies] = await Promise.all([
+      prisma.user.findMany(),
+      prisma.providerConfig.findMany(),
+      prisma.connectedAccount.findMany(),
+      prisma.s3StorageConfig.findMany(),
+      prisma.folder.findMany(),
+      prisma.file.findMany(),
+      prisma.fileShare.findMany(),
+      prisma.apiKey.findMany(),
+      prisma.uploadRoutingPolicy.findMany(),
+    ])
+
+    const backupData = {
+      version: '1.0',
+      timestamp: new Date().toISOString(),
+      data: {
+        users,
+        providerConfigs,
+        connectedAccounts,
+        s3Configs,
+        folders,
+        files: files.map((f) => ({ ...f, sizeBytes: f.sizeBytes.toString() })),
+        fileShares,
+        apiKeys,
+        policies,
+      }
     }
-    res.setHeader('Content-Disposition', 'attachment; filename=9drive-backup.db')
-    res.setHeader('Content-Type', 'application/octet-stream')
-    const fileStream = fs.createReadStream(dbPath)
-    fileStream.pipe(res)
+
+    res.setHeader('Content-Disposition', 'attachment; filename="9drive-backup.json"')
+    res.setHeader('Content-Type', 'application/json')
+    return res.send(JSON.stringify(backupData, null, 2))
   } catch (error) {
     return next(error)
   }
@@ -225,65 +248,136 @@ systemRouter.post('/restore', requireAuth, requireAdmin, (req, res, next) => {
 
     const busboy = Busboy({ headers: req.headers, limits: { files: 1 } })
     let fileReceived = false
+    let rawContent = ''
 
-    busboy.on('file', (name, fileStream, info) => {
+    busboy.on('file', (_name, fileStream) => {
       fileReceived = true
-      const dbPath = getDatabaseFilePath()
-      const tempDbPath = dbPath + '.tmp'
-      const writeStream = fs.createWriteStream(tempDbPath)
-
-      fileStream.pipe(writeStream)
-
-      writeStream.on('finish', async () => {
-        try {
-          // Disconnect prisma client first to release database lock
-          await prisma.$disconnect()
-
-          // Replace old database file with restored database file
-          fs.renameSync(tempDbPath, dbPath)
-
-          res.json({
-            status: 'success',
-            message: 'Database restored successfully. Server will restart in 2 seconds.'
-          })
-
-          // Graceful exit after response is sent
-          setTimeout(() => {
-            console.log('Database restored. Exiting to allow PM2 restart.')
-            process.exit(0)
-          }, 2000)
-
-        } catch (err: any) {
-          if (fs.existsSync(tempDbPath)) {
-            try { fs.unlinkSync(tempDbPath) } catch {}
-          }
-          console.error('Failed to restore database:', err)
-          return res.status(500).json({
-            code: 'RESTORE_FAILED',
-            message: 'Failed to restore database.',
-            error: err.message
-          })
-        }
+      fileStream.on('data', (chunk) => {
+        rawContent += chunk.toString('utf8')
       })
 
-      writeStream.on('error', (err) => {
-        if (fs.existsSync(tempDbPath)) {
-          try { fs.unlinkSync(tempDbPath) } catch {}
+      fileStream.on('end', async () => {
+        try {
+          const parsed = JSON.parse(rawContent)
+          if (!parsed.data) {
+            return res.status(400).json({ code: 'INVALID_BACKUP', message: 'Invalid backup file structure.' })
+          }
+
+          const { users, providerConfigs, connectedAccounts, s3Configs, folders, files, fileShares, apiKeys, policies } = parsed.data
+
+          // Rehydrate users
+          if (Array.isArray(users)) {
+            for (const u of users) {
+              await prisma.user.upsert({
+                where: { id: u.id },
+                create: { ...u, createdAt: new Date(u.createdAt), updatedAt: new Date(u.updatedAt) },
+                update: { name: u.name, email: u.email, role: u.role, status: u.status, passwordHash: u.passwordHash },
+              }).catch(() => undefined)
+            }
+          }
+
+          // Rehydrate provider configs
+          if (Array.isArray(providerConfigs)) {
+            for (const p of providerConfigs) {
+              await prisma.providerConfig.upsert({
+                where: { id: p.id },
+                create: { ...p, createdAt: new Date(p.createdAt), updatedAt: new Date(p.updatedAt) },
+                update: p,
+              }).catch(() => undefined)
+            }
+          }
+
+          // Rehydrate connected accounts
+          if (Array.isArray(connectedAccounts)) {
+            for (const acc of connectedAccounts) {
+              await prisma.connectedAccount.upsert({
+                where: { id: acc.id },
+                create: { ...acc, createdAt: new Date(acc.createdAt), updatedAt: new Date(acc.updatedAt), tokenExpiresAt: acc.tokenExpiresAt ? new Date(acc.tokenExpiresAt) : null },
+                update: acc,
+              }).catch(() => undefined)
+            }
+          }
+
+          // Rehydrate s3 configs
+          if (Array.isArray(s3Configs)) {
+            for (const s of s3Configs) {
+              await prisma.s3StorageConfig.upsert({
+                where: { id: s.id },
+                create: { ...s, quotaBytes: s.quotaBytes ? BigInt(s.quotaBytes) : null, createdAt: new Date(s.createdAt), updatedAt: new Date(s.updatedAt) },
+                update: { ...s, quotaBytes: s.quotaBytes ? BigInt(s.quotaBytes) : null },
+              }).catch(() => undefined)
+            }
+          }
+
+          // Rehydrate folders
+          if (Array.isArray(folders)) {
+            for (const fol of folders) {
+              await prisma.folder.upsert({
+                where: { id: fol.id },
+                create: { ...fol, createdAt: new Date(fol.createdAt), updatedAt: new Date(fol.updatedAt), deletedAt: fol.deletedAt ? new Date(fol.deletedAt) : null, lastOpenedAt: fol.lastOpenedAt ? new Date(fol.lastOpenedAt) : null },
+                update: fol,
+              }).catch(() => undefined)
+            }
+          }
+
+          // Rehydrate files
+          if (Array.isArray(files)) {
+            for (const fil of files) {
+              await prisma.file.upsert({
+                where: { id: fil.id },
+                create: { ...fil, sizeBytes: BigInt(fil.sizeBytes), createdAt: new Date(fil.createdAt), updatedAt: new Date(fil.updatedAt), deletedAt: fil.deletedAt ? new Date(fil.deletedAt) : null, lastOpenedAt: fil.lastOpenedAt ? new Date(fil.lastOpenedAt) : null },
+                update: { ...fil, sizeBytes: BigInt(fil.sizeBytes) },
+              }).catch(() => undefined)
+            }
+          }
+
+          // Rehydrate file shares
+          if (Array.isArray(fileShares)) {
+            for (const fs of fileShares) {
+              await prisma.fileShare.upsert({
+                where: { id: fs.id },
+                create: { ...fs, createdAt: new Date(fs.createdAt), updatedAt: new Date(fs.updatedAt), expiresAt: fs.expiresAt ? new Date(fs.expiresAt) : null },
+                update: fs,
+              }).catch(() => undefined)
+            }
+          }
+
+          // Rehydrate api keys
+          if (Array.isArray(apiKeys)) {
+            for (const k of apiKeys) {
+              await prisma.apiKey.upsert({
+                where: { id: k.id },
+                create: { ...k, createdAt: new Date(k.createdAt), updatedAt: new Date(k.updatedAt), lastUsedAt: k.lastUsedAt ? new Date(k.lastUsedAt) : null, expiresAt: k.expiresAt ? new Date(k.expiresAt) : null, revokedAt: k.revokedAt ? new Date(k.revokedAt) : null },
+                update: k,
+              }).catch(() => undefined)
+            }
+          }
+
+          // Rehydrate policies
+          if (Array.isArray(policies)) {
+            for (const pol of policies) {
+              await prisma.uploadRoutingPolicy.upsert({
+                where: { id: pol.id },
+                create: { ...pol, createdAt: new Date(pol.createdAt), updatedAt: new Date(pol.updatedAt) },
+                update: pol,
+              }).catch(() => undefined)
+            }
+          }
+
+          return res.json({
+            status: 'success',
+            message: 'Database restored successfully.'
+          })
+        } catch (err: any) {
+          console.error('Failed to restore backup:', err)
+          return res.status(500).json({ code: 'RESTORE_FAILED', message: err.message || 'Failed to restore database.' })
         }
-        console.error('Write error on temp DB:', err)
-        return res.status(500).json({
-          code: 'WRITE_ERROR',
-          message: 'Failed to write temporary database file.',
-          error: err.message
-        })
       })
     })
 
     busboy.on('error', (err) => {
       console.error('Busboy error:', err)
-      if (!res.headersSent) {
-        next(err)
-      }
+      if (!res.headersSent) next(err)
     })
 
     busboy.on('finish', () => {
@@ -297,25 +391,3 @@ systemRouter.post('/restore', requireAuth, requireAdmin, (req, res, next) => {
     return next(error)
   }
 })
-
-function getDatabaseFilePath(): string {
-  const dbUrl = process.env.DATABASE_URL || 'file:./dev.db'
-  let cleanPath = dbUrl.replace(/^(sqlite|file):/, '')
-
-  if (cleanPath.includes('?')) {
-    cleanPath = cleanPath.split('?')[0]
-  }
-
-  if (!path.isAbsolute(cleanPath)) {
-    let baseDir = path.resolve(process.cwd(), 'prisma')
-    if (!fs.existsSync(baseDir)) {
-      baseDir = path.resolve(process.cwd(), 'backend', 'prisma')
-    }
-    if (!fs.existsSync(baseDir)) {
-      baseDir = path.resolve(process.cwd(), '..', 'backend', 'prisma')
-    }
-    return path.resolve(baseDir, cleanPath)
-  }
-
-  return cleanPath
-}

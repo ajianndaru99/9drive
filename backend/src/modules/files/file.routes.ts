@@ -5,16 +5,14 @@ import { prisma } from '../../config/prisma.js'
 import { env } from '../../config/env.js'
 import { requireAuth, type AuthRequest } from '../../middleware/auth.middleware.js'
 import { hashToken, randomToken } from '../../utils/crypto.js'
-import { getAuthedGoogleClient, syncGoogleAppFolderFiles, syncGoogleQuota } from '../google/google.service.js'
-import { deleteS3Object, syncS3Quota, createS3Client, getS3ConfigForAccount } from '../s3/s3.service.js'
+import { getAuthedGoogleClient, syncGoogleAppFolderFiles, syncGoogleFullDrive, syncGoogleQuota } from '../google/google.service.js'
+import { deleteS3Object, syncS3Quota, createS3Client, getS3ConfigForAccount, syncS3BucketFiles } from '../s3/s3.service.js'
 import { streamProviderFile } from './stream-file.js'
 import { googleDownloadExportMimeTypes, normalizeHeaders, withExtension } from './stream-google-file.js'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { Readable } from 'node:stream'
 import { ZipArchive } from 'archiver'
 import { createAuditLog } from '../../utils/audit.js'
-
-
 
 export const fileRouter = Router()
 
@@ -26,6 +24,7 @@ fileRouter.get('/preview/:token', async (req, res, next) => {
       include: { file: { include: { connectedAccount: true } } },
     })
     if (!preview || preview.file.status !== 'active') return res.status(404).json({ code: 'PREVIEW_NOT_FOUND', message: 'Preview token not found.' })
+    await prisma.file.update({ where: { id: preview.file.id }, data: { lastOpenedAt: new Date() } }).catch(() => undefined)
     return streamProviderFile(preview.file, req.headers.range, res, { disposition: 'inline' })
   } catch (error) {
     return next(error)
@@ -33,6 +32,56 @@ fileRouter.get('/preview/:token', async (req, res, next) => {
 })
 
 fileRouter.use(requireAuth)
+
+fileRouter.get('/starred', async (req: AuthRequest, res, next) => {
+  try {
+    const files = await prisma.file.findMany({
+      where: { userId: req.user!.id, status: 'active', isStarred: true },
+      include: {
+        connectedAccount: { select: { id: true, email: true, provider: true } },
+        folder: { select: { id: true, name: true } }
+      },
+      orderBy: { updatedAt: 'desc' }
+    })
+    return res.json({ files: files.map((file) => ({ ...file, sizeBytes: file.sizeBytes.toString() })) })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+fileRouter.get('/recent', async (req: AuthRequest, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit ?? 25), 100)
+    const files = await prisma.file.findMany({
+      where: { userId: req.user!.id, status: 'active', isArchived: false },
+      include: {
+        connectedAccount: { select: { id: true, email: true, provider: true } },
+        folder: { select: { id: true, name: true } }
+      },
+      orderBy: [{ lastOpenedAt: 'desc' }, { createdAt: 'desc' }],
+      take: limit
+    })
+    return res.json({ files: files.map((file) => ({ ...file, sizeBytes: file.sizeBytes.toString() })) })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+fileRouter.get('/archived', async (req: AuthRequest, res, next) => {
+  try {
+    const files = await prisma.file.findMany({
+      where: { userId: req.user!.id, status: 'active', isArchived: true },
+      include: {
+        connectedAccount: { select: { id: true, email: true, provider: true } },
+        folder: { select: { id: true, name: true } }
+      },
+      orderBy: { updatedAt: 'desc' }
+    })
+    return res.json({ files: files.map((file) => ({ ...file, sizeBytes: file.sizeBytes.toString() })) })
+  } catch (error) {
+    return next(error)
+  }
+})
 
 fileRouter.get('/', async (req: AuthRequest, res, next) => {
   try {
@@ -44,7 +93,9 @@ fileRouter.get('/', async (req: AuthRequest, res, next) => {
       minSize: z.coerce.number().optional(),
       maxSize: z.coerce.number().optional(),
       startDate: z.string().datetime().optional(),
-      endDate: z.string().datetime().optional()
+      endDate: z.string().datetime().optional(),
+      archived: z.string().optional(),
+      starred: z.string().optional(),
     }).parse(req.query)
 
     const typeFilters: Record<string, string[]> = {
@@ -58,6 +109,8 @@ fileRouter.get('/', async (req: AuthRequest, res, next) => {
     const where: any = {
       userId: req.user!.id,
       status: 'active',
+      isArchived: query.archived === '1' ? true : false,
+      ...(query.starred === '1' ? { isStarred: true } : {}),
       ...(query.folderId ? { folderId: query.folderId } : {}),
       ...(query.q ? { name: { contains: query.q } } : {}),
       ...(query.accountId ? { connectedAccountId: query.accountId } : {}),
@@ -237,14 +290,28 @@ fileRouter.get('/shared-links', async (req: AuthRequest, res, next) => {
 
 fileRouter.post('/sync-google', async (req: AuthRequest, res, next) => {
   try {
-    const body = z.object({ connectedAccountId: z.string().min(1).optional() }).parse(req.body ?? {})
+    const body = z.object({
+      connectedAccountId: z.string().min(1).optional(),
+      mode: z.enum(['full', 'app_folder']).default('full')
+    }).parse(req.body ?? {})
+
     const accounts = await prisma.connectedAccount.findMany({
-      where: { userId: req.user!.id, provider: 'google_drive', status: 'connected', ...(body.connectedAccountId ? { id: body.connectedAccountId } : {}) },
-      select: { id: true },
+      where: { userId: req.user!.id, status: 'connected', ...(body.connectedAccountId ? { id: body.connectedAccountId } : {}) },
+      select: { id: true, provider: true },
     })
 
     const results = []
-    for (const account of accounts) results.push(await syncGoogleAppFolderFiles(account.id, req.user!.id))
+    for (const account of accounts) {
+      if (account.provider === 's3') {
+        results.push(await syncS3BucketFiles(account.id, req.user!.id))
+      } else {
+        if (body.mode === 'full') {
+          results.push(await syncGoogleFullDrive(account.id, req.user!.id))
+        } else {
+          results.push(await syncGoogleAppFolderFiles(account.id, req.user!.id))
+        }
+      }
+    }
 
     return res.json({
       status: 'ok',
@@ -255,10 +322,55 @@ fileRouter.post('/sync-google', async (req: AuthRequest, res, next) => {
   }
 })
 
+fileRouter.patch('/:id/star', async (req: AuthRequest, res, next) => {
+  try {
+    const fileId = String(req.params.id)
+    const file = await prisma.file.findFirstOrThrow({ where: { id: fileId, userId: req.user!.id, status: 'active' } })
+    const updated = await prisma.file.update({
+      where: { id: file.id },
+      data: { isStarred: !file.isStarred }
+    })
+    await createAuditLog(req.user!.id, updated.isStarred ? 'STAR_FILE' : 'UNSTAR_FILE', 'file', updated.id, { name: updated.name })
+    return res.json({ file: { ...updated, sizeBytes: updated.sizeBytes.toString() } })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+fileRouter.patch('/:id/archive', async (req: AuthRequest, res, next) => {
+  try {
+    const fileId = String(req.params.id)
+    const file = await prisma.file.findFirstOrThrow({ where: { id: fileId, userId: req.user!.id, status: 'active' } })
+    const updated = await prisma.file.update({
+      where: { id: file.id },
+      data: { isArchived: !file.isArchived }
+    })
+    await createAuditLog(req.user!.id, updated.isArchived ? 'ARCHIVE_FILE' : 'UNARCHIVE_FILE', 'file', updated.id, { name: updated.name })
+    return res.json({ file: { ...updated, sizeBytes: updated.sizeBytes.toString() } })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+fileRouter.post('/:id/touch', async (req: AuthRequest, res, next) => {
+  try {
+    const fileId = String(req.params.id)
+    const file = await prisma.file.findFirstOrThrow({ where: { id: fileId, userId: req.user!.id, status: 'active' } })
+    await prisma.file.update({
+      where: { id: file.id },
+      data: { lastOpenedAt: new Date() }
+    })
+    return res.json({ status: 'ok' })
+  } catch (error) {
+    return next(error)
+  }
+})
+
 fileRouter.get('/:id', async (req: AuthRequest, res, next) => {
   try {
     const fileId = String(req.params.id)
     const file = await prisma.file.findFirstOrThrow({ where: { id: fileId, userId: req.user!.id }, include: { connectedAccount: { select: { id: true, email: true, provider: true } }, folder: { select: { id: true, name: true } } } })
+    await prisma.file.update({ where: { id: file.id }, data: { lastOpenedAt: new Date() } }).catch(() => undefined)
     return res.json({ file: { ...file, sizeBytes: file.sizeBytes.toString() } })
   } catch (error) {
     return next(error)

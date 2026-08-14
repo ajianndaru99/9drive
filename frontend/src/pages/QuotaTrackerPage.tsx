@@ -43,8 +43,11 @@ function statusColor(percent: number) {
   return 'bg-emerald-500 text-emerald-600'
 }
 
+type StorageBreakdown = { photo: string; video: string; document: string }
+
 export function QuotaTrackerPage() {
   const [summary, setSummary] = useState<StorageSummary | null>(null)
+  const [breakdown, setBreakdown] = useState<StorageBreakdown>({ photo: '0', video: '0', document: '0' })
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([])
   const [routingPolicy, setRoutingPolicy] = useState<RoutingPolicy>({ mode: 'most_available', priorityAccountIds: [], roundRobinCursor: 0 })
   const [message, setMessage] = useState('')
@@ -53,12 +56,14 @@ export function QuotaTrackerPage() {
   const [syncingAccountId, setSyncingAccountId] = useState<string | null>(null)
 
   async function load() {
-    const [summaryData, accountData, policyData] = await Promise.all([
+    const [summaryData, breakdownData, accountData, policyData] = await Promise.all([
       apiFetch<StorageSummary>('/storage/summary'),
+      apiFetch<StorageBreakdown>('/storage/breakdown'),
       apiFetch<{ accounts: ConnectedAccount[] }>('/connected-accounts'),
       apiFetch<{ policy: RoutingPolicy }>('/storage/routing-policy'),
     ])
     setSummary(summaryData)
+    setBreakdown(breakdownData)
     setAccounts(accountData.accounts)
     setRoutingPolicy(policyData.policy)
   }
@@ -154,8 +159,27 @@ export function QuotaTrackerPage() {
         <Card className="p-5"><p className="text-sm text-slate-500">Total Storage</p><p className="mt-2 text-2xl font-extrabold">{formatBytes(summary?.totalBytes)}</p></Card>
         <Card className="p-5"><p className="text-sm text-slate-500">Used Storage</p><p className="mt-2 text-2xl font-extrabold">{formatBytes(summary?.usedBytes)}</p></Card>
         <Card className="p-5"><p className="text-sm text-slate-500">Available</p><p className="mt-2 text-2xl font-extrabold">{formatBytes(summary?.availableBytes)}</p></Card>
-        <Card className="p-5"><p className="text-sm text-slate-500">Accounts</p><p className="mt-2 text-2xl font-extrabold">{accounts.length}</p></Card>
+        <Card className="p-5"><p className="text-sm text-slate-500">Connected Accounts</p><p className="mt-2 text-2xl font-extrabold">{accounts.length}</p></Card>
       </div>
+
+      {/* Storage Breakdown by Kind */}
+      <Card className="mt-6 p-5">
+        <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-500">Content Storage Distribution</h2>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="rounded-xl bg-emerald-50/70 p-3.5 border border-emerald-100">
+            <p className="text-xs font-bold text-emerald-700">Images & Photos</p>
+            <p className="mt-1 text-xl font-extrabold text-slate-900">{formatBytes(breakdown.photo)}</p>
+          </div>
+          <div className="rounded-xl bg-violet-50/70 p-3.5 border border-violet-100">
+            <p className="text-xs font-bold text-violet-700">Videos & Media</p>
+            <p className="mt-1 text-xl font-extrabold text-slate-900">{formatBytes(breakdown.video)}</p>
+          </div>
+          <div className="rounded-xl bg-blue-50/70 p-3.5 border border-blue-100">
+            <p className="text-xs font-bold text-blue-700">Documents & Archives</p>
+            <p className="mt-1 text-xl font-extrabold text-slate-900">{formatBytes(breakdown.document)}</p>
+          </div>
+        </div>
+      </Card>
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <Button variant="outline"><Filter className="h-4 w-4" />All Providers</Button>

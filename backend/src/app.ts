@@ -24,7 +24,7 @@ app.use(cors({
     if (!origin || env.FRONTEND_URL === '*' || env.FRONTEND_URL.split(',').map(s => s.trim()).includes(origin)) {
       callback(null, true)
     } else {
-      callback(null, true)
+      callback(null, false)
     }
   },
   credentials: true,

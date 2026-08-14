@@ -6,6 +6,9 @@ export type FolderItem = {
   iconUrl?: string | null
   parentId?: string | null
   providerFolderId?: string | null
+  isStarred?: boolean
+  isArchived?: boolean
+  lastOpenedAt?: string | null
 }
 
 export type FileItem = {
@@ -28,6 +31,9 @@ export type FileItem = {
   openedDate?: string
   folderId?: string | null
   folderName?: string | null
+  isStarred?: boolean
+  isArchived?: boolean
+  lastOpenedAt?: string | null
 }
 
 export const folders: FolderItem[] = [

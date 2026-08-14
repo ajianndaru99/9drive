@@ -80,12 +80,53 @@ async function ensureProviderFolderIds(
   }
 }
 
+folderRouter.get('/breadcrumbs/:id', async (req: AuthRequest, res, next) => {
+  try {
+    const folderId = String(req.params.id)
+    const breadcrumbs: Array<{ id: string; name: string }> = []
+    let currentId: string | null = folderId
+
+    while (currentId) {
+      const currentFolder: { id: string; name: string; parentId: string | null } | null = await prisma.folder.findFirst({
+        where: { id: currentId, userId: req.user!.id, deletedAt: null },
+        select: { id: true, name: true, parentId: true }
+      })
+      if (!currentFolder) break
+      breadcrumbs.unshift({ id: currentFolder.id, name: currentFolder.name })
+      currentId = currentFolder.parentId
+    }
+
+    return res.json({ breadcrumbs })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+folderRouter.get('/starred', async (req: AuthRequest, res, next) => {
+  try {
+    const folders = await prisma.folder.findMany({
+      where: { userId: req.user!.id, deletedAt: null, isStarred: true },
+      select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, isStarred: true, isArchived: true, createdAt: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' },
+    })
+    return res.json({ folders: folders.map(serializeFolder) })
+  } catch (error) {
+    return next(error)
+  }
+})
+
 folderRouter.get('/', async (req: AuthRequest, res, next) => {
   try {
-    const query = z.object({ parentId: z.string().nullable().optional(), all: z.string().optional() }).parse(req.query)
+    const query = z.object({ parentId: z.string().nullable().optional(), all: z.string().optional(), starred: z.string().optional(), archived: z.string().optional() }).parse(req.query)
     const folders = await prisma.folder.findMany({
-      where: { userId: req.user!.id, deletedAt: null, ...(query.all === '1' ? {} : { parentId: query.parentId ?? null }) },
-      select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, createdAt: true, updatedAt: true },
+      where: {
+        userId: req.user!.id,
+        deletedAt: null,
+        isArchived: query.archived === '1' ? true : false,
+        ...(query.starred === '1' ? { isStarred: true } : {}),
+        ...(query.all === '1' ? {} : { parentId: query.parentId ?? null })
+      },
+      select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, isStarred: true, isArchived: true, createdAt: true, updatedAt: true },
       orderBy: { updatedAt: 'desc' },
     })
     await ensureProviderFolderIds(folders, req.user!.id)
@@ -99,8 +140,8 @@ folderRouter.get('/recent', async (req: AuthRequest, res, next) => {
   try {
     const limit = Math.min(Number(req.query.limit ?? 4), 4)
     const folders = await prisma.folder.findMany({
-      where: { userId: req.user!.id, deletedAt: null },
-      select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, createdAt: true, updatedAt: true },
+      where: { userId: req.user!.id, deletedAt: null, isArchived: false },
+      select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, isStarred: true, isArchived: true, createdAt: true, updatedAt: true },
       orderBy: { updatedAt: 'desc' },
       take: limit,
     })
@@ -160,10 +201,42 @@ folderRouter.post('/', async (req: AuthRequest, res, next) => {
         providerFolderId,
         connectedAccountId: connectedAccount?.id ?? null
       },
-      select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, createdAt: true, updatedAt: true },
+      select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, isStarred: true, isArchived: true, createdAt: true, updatedAt: true },
     })
     await createAuditLog(req.user!.id, 'CREATE_FOLDER', 'folder', folder.id, { name: folder.name })
     return res.status(201).json({ folder: serializeFolder(folder) })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+folderRouter.patch('/:id/star', async (req: AuthRequest, res, next) => {
+  try {
+    const folderId = String(req.params.id)
+    const folder = await prisma.folder.findFirstOrThrow({ where: { id: folderId, userId: req.user!.id, deletedAt: null } })
+    const updated = await prisma.folder.update({
+      where: { id: folder.id },
+      data: { isStarred: !folder.isStarred },
+      select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, isStarred: true, isArchived: true, createdAt: true, updatedAt: true }
+    })
+    await createAuditLog(req.user!.id, updated.isStarred ? 'STAR_FOLDER' : 'UNSTAR_FOLDER', 'folder', updated.id, { name: updated.name })
+    return res.json({ folder: serializeFolder(updated) })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+folderRouter.patch('/:id/archive', async (req: AuthRequest, res, next) => {
+  try {
+    const folderId = String(req.params.id)
+    const folder = await prisma.folder.findFirstOrThrow({ where: { id: folderId, userId: req.user!.id, deletedAt: null } })
+    const updated = await prisma.folder.update({
+      where: { id: folder.id },
+      data: { isArchived: !folder.isArchived },
+      select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, isStarred: true, isArchived: true, createdAt: true, updatedAt: true }
+    })
+    await createAuditLog(req.user!.id, updated.isArchived ? 'ARCHIVE_FOLDER' : 'UNARCHIVE_FOLDER', 'folder', updated.id, { name: updated.name })
+    return res.json({ folder: serializeFolder(updated) })
   } catch (error) {
     return next(error)
   }
@@ -246,7 +319,7 @@ folderRouter.patch('/:id', async (req: AuthRequest, res, next) => {
     if (folder.count === 0) return res.status(404).json({ code: 'FOLDER_NOT_FOUND', message: 'Folder not found.' })
     const updated = await prisma.folder.findFirstOrThrow({
       where: { id: folderId, userId: req.user!.id },
-      select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, createdAt: true, updatedAt: true },
+      select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, isStarred: true, isArchived: true, createdAt: true, updatedAt: true },
     })
     await createAuditLog(req.user!.id, 'UPDATE_FOLDER', 'folder', updated.id, { name: updated.name, updates: body })
     return res.json({ folder: serializeFolder(updated) })
@@ -272,39 +345,13 @@ folderRouter.delete('/:id', async (req: AuthRequest, res, next) => {
       }
     }
 
-    const files = await prisma.file.findMany({ where: { userId: req.user!.id, status: 'active', folderId: { in: [...folderIds] } }, include: { connectedAccount: true } })
-    const syncedAccountIds = new Set<string>()
-    for (const file of files) {
-      try {
-        const auth = await getAuthedGoogleClient(file.connectedAccount)
-        const drive = google.drive({ version: 'v3', auth })
-        await drive.files.delete({ fileId: file.providerFileId })
-        syncedAccountIds.add(file.connectedAccountId)
-      } catch {
-        // Keep going so one failure does not block the whole deletion
-      }
-    }
+    const files = await prisma.file.findMany({ where: { userId: req.user!.id, status: 'active', folderId: { in: [...folderIds] } } })
 
-    // Delete folders on Google Drive
-    const foldersToDelete = await prisma.folder.findMany({ where: { id: { in: [...folderIds] }, userId: req.user!.id }, include: { connectedAccount: true } })
-    for (const f of foldersToDelete) {
-      if (f.providerFolderId && f.connectedAccount) {
-        try {
-          const auth = await getAuthedGoogleClient(f.connectedAccount)
-          const drive = google.drive({ version: 'v3', auth })
-          await drive.files.delete({ fileId: f.providerFolderId })
-          if (f.connectedAccountId) syncedAccountIds.add(f.connectedAccountId)
-        } catch {
-          // ignore
-        }
-      }
-    }
-
+    // Soft delete files and folders in DB (move to Recycle Bin)
     await prisma.file.updateMany({ where: { id: { in: files.map((file) => file.id) } }, data: { status: 'deleted', deletedAt: new Date() } })
     await prisma.folder.updateMany({ where: { id: { in: [...folderIds] }, userId: req.user!.id }, data: { deletedAt: new Date() } })
-    for (const accountId of syncedAccountIds) await syncGoogleQuota(accountId).catch(() => undefined)
 
-    await createAuditLog(req.user!.id, 'DELETE_FOLDER', 'folder', root.id, { name: root.name })
+    await createAuditLog(req.user!.id, 'TRASH_FOLDER', 'folder', root.id, { name: root.name, fileCount: files.length })
     return res.json({ status: 'ok' })
   } catch (error) {
     return next(error)

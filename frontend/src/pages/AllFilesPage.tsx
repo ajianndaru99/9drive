@@ -300,21 +300,22 @@ export function AllFilesPage() {
   }
 
 
-  async function syncGoogleDrive() {
+  async function syncGoogleDrive(mode: 'full' | 'app_folder' = 'full') {
     setSyncingDrive(true)
     setMessage('')
     try {
-      const response = await apiFetch<{ results: { created: number; updated: number; deleted: number }[] }>('/files/sync-google', { method: 'POST', body: JSON.stringify({}) })
+      const response = await apiFetch<{ results: { created: number; updated: number; deleted: number; foldersCreated?: number }[] }>('/files/sync-google', { method: 'POST', body: JSON.stringify({ mode }) })
 
-      let created = 0, updated = 0, deleted = 0
+      let created = 0, updated = 0, deleted = 0, foldersCreated = 0
       for (const res of response.results) {
         created += res.created
         updated += res.updated
         deleted += res.deleted
+        foldersCreated += res.foldersCreated || 0
       }
       const accounts = response.results.length
 
-      setMessage(`Google Drive synced. ${created} added, ${updated} updated, ${deleted} removed across ${accounts} account${accounts === 1 ? '' : 's'}.`)
+      setMessage(`Drive sync completed. ${created} files & ${foldersCreated} folders discovered, ${updated} updated across ${accounts} connected account${accounts === 1 ? '' : 's'}.`)
       await loadAll()
       window.dispatchEvent(new Event('9drive:storage-changed'))
     } catch (error) {
@@ -322,6 +323,33 @@ export function AllFilesPage() {
     } finally {
       setSyncingDrive(false)
     }
+  }
+
+  async function starActiveFile() {
+    if (!activeFile?.id) return
+    try {
+      await apiFetch(`/files/${activeFile.id}/star`, { method: 'PATCH' })
+      const newStarredState = !activeFile.isStarred
+      setFiles((prev) => prev.map((f) => f.id === activeFile.id ? { ...f, isStarred: newStarredState } : f))
+      setMessage(newStarredState ? `Starred "${activeFile.name}".` : `Removed "${activeFile.name}" from starred.`)
+      setTimeout(() => setMessage(''), 2500)
+    } catch (err: any) {
+      setMessage(err.message || 'Failed to update star')
+    }
+    setContextMenu({ x: 0, y: 0, file: null })
+  }
+
+  async function archiveActiveFile() {
+    if (!activeFile?.id) return
+    try {
+      await apiFetch(`/files/${activeFile.id}/archive`, { method: 'PATCH' })
+      setFiles((prev) => prev.filter((f) => f.id !== activeFile.id))
+      setMessage(`Archived "${activeFile.name}".`)
+      setTimeout(() => setMessage(''), 2500)
+    } catch (err: any) {
+      setMessage(err.message || 'Failed to archive file')
+    }
+    setContextMenu({ x: 0, y: 0, file: null })
   }
 
   function selectUploadFiles(files: FileList | File[] | null | undefined) {
@@ -658,7 +686,7 @@ export function AllFilesPage() {
         <Button size="sm" variant="outline" onClick={() => setFolderOpen(true)}>
           <FolderPlus className="h-3.5 w-3.5" />New Folder
         </Button>
-        <Button size="sm" variant="outline" disabled={syncingDrive} onClick={syncGoogleDrive}>
+        <Button size="sm" variant="outline" disabled={syncingDrive} onClick={() => syncGoogleDrive('full')}>
           <RefreshCw className={syncingDrive ? 'h-3.5 w-3.5 animate-spin' : 'h-3.5 w-3.5'} />
           {syncingDrive ? 'Syncing...' : 'Sync'}
         </Button>
@@ -694,7 +722,7 @@ export function AllFilesPage() {
       <div className="mt-4 flex flex-wrap items-center gap-2 lg:hidden">
         <Button size="sm" onClick={() => setUploadOpen(true)}><Upload className="h-3.5 w-3.5" />Upload</Button>
         <Button size="sm" variant="outline" onClick={() => setFolderOpen(true)}><FolderPlus className="h-3.5 w-3.5" />New Folder</Button>
-        <Button size="sm" variant="outline" disabled={syncingDrive} onClick={syncGoogleDrive}><RefreshCw className={syncingDrive ? 'h-3.5 w-3.5 animate-spin' : 'h-3.5 w-3.5'} />{syncingDrive ? 'Syncing...' : 'Sync'}</Button>
+        <Button size="sm" variant="outline" disabled={syncingDrive} onClick={() => syncGoogleDrive('full')}><RefreshCw className={syncingDrive ? 'h-3.5 w-3.5 animate-spin' : 'h-3.5 w-3.5'} />{syncingDrive ? 'Syncing...' : 'Sync'}</Button>
         <div className="flex items-center gap-0.5 rounded-xl border border-slate-200 bg-slate-50 p-0.5">
           {(['xs','sm','md','lg'] as FolderSizeScale[]).map((s) => (
             <button key={s} type="button" onClick={() => changeFolderSize(s)} className={['rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wide transition-all border border-transparent', folderSizeScale === s ? sizeActiveClasses[s] : 'text-slate-400 hover:text-slate-600'].join(' ')} aria-label={`Folder size ${s}`}>{s}</button>
@@ -731,7 +759,7 @@ export function AllFilesPage() {
       )}
       </div>
       <EmptyAreaContextMenu x={emptyContextMenu.x} y={emptyContextMenu.y} open={emptyContextMenu.open} canPasteFolder={Boolean(cutFolder)} onClose={() => setEmptyContextMenu({ x: 0, y: 0, open: false })} onUpload={() => { setUploadOpen(true); setEmptyContextMenu({ x: 0, y: 0, open: false }) }} onCreateFolder={() => { setFolderOpen(true); setEmptyContextMenu({ x: 0, y: 0, open: false }) }} onPasteFolder={() => { pasteFolder().catch((error) => setMessage(error instanceof Error ? error.message : 'Failed to paste folder')); setEmptyContextMenu({ x: 0, y: 0, open: false }) }} />
-      <FileContextMenu x={contextMenu.x} y={contextMenu.y} file={contextMenu.file} onClose={() => setContextMenu({ x: 0, y: 0, file: null })} onView={viewFile} onDownload={downloadFile} onRename={() => { setRenameValue(activeFile?.name ?? ''); setRenameOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }} onMove={() => { setMoveOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }} onDetails={() => { setDetailOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }} onShare={shareFile} onCopyLink={copyShareLinkDirect} onInvite={inviteToFile} onDelete={() => { setDeleteOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }} />
+      <FileContextMenu x={contextMenu.x} y={contextMenu.y} file={contextMenu.file} onClose={() => setContextMenu({ x: 0, y: 0, file: null })} onView={viewFile} onDownload={downloadFile} onRename={() => { setRenameValue(activeFile?.name ?? ''); setRenameOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }} onMove={() => { setMoveOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }} onDetails={() => { setDetailOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }} onShare={shareFile} onCopyLink={copyShareLinkDirect} onInvite={inviteToFile} onStar={starActiveFile} onArchive={archiveActiveFile} onDelete={() => { setDeleteOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }} />
       <FolderContextMenu x={folderContextMenu.x} y={folderContextMenu.y} folder={folderContextMenu.folder} onClose={() => setFolderContextMenu({ x: 0, y: 0, folder: null })} onCut={() => cutSelectedFolder(activeFolderForMenu)} onRename={() => { setFolderRenameValue(activeFolderForMenu?.name ?? ''); setFolderRenameColor(normalizeFolderColor(activeFolderForMenu?.color)); setFolderRenameIconUrl(activeFolderForMenu?.iconUrl ?? defaultFolderIconUrl); setFolderRenameOpen(true); setFolderContextMenu({ x: 0, y: 0, folder: null }) }} onInvite={inviteToFolder} onCopyLink={copyFolderLink} onDelete={() => { setFolderDeleteOpen(true); setFolderContextMenu({ x: 0, y: 0, folder: null }) }} />
       <FileDetailsDrawer open={detailOpen} file={activeFile} onClose={() => setDetailOpen(false)} />
 

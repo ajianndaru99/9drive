@@ -1,8 +1,10 @@
-import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
+import { type FormEvent, type ReactNode, useEffect, useState, useRef } from 'react'
 import { Outlet, useOutletContext, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Bell,
   Braces,
+  Clock,
+  Archive,
   FileArchive,
   Gauge,
   History,
@@ -23,7 +25,9 @@ import {
   Info,
   CheckCircle,
   ChevronDown,
-  Upload
+  Upload,
+  FileText,
+  Folder
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BrandLogo } from '@/components/drive/BrandLogo'
@@ -34,11 +38,13 @@ import { clearAuthSession, getStoredUser, updateStoredUser, type AuthUser } from
 import { getGravatarUrl } from '@/lib/gravatar'
 import { cn } from '@/lib/utils'
 
-const menu = [
+const menu: Array<{ label: string; icon: any; href: string; disabled?: boolean }> = [
   { label: 'All Files', icon: FileArchive, href: '/all-files' },
-  { label: 'Quota Tracker', icon: Gauge, href: '/quota' },
+  { label: 'Recent', icon: Clock, href: '/recent' },
+  { label: 'Starred', icon: Star, href: '/starred' },
   { label: 'Shared With Me', icon: Share2, href: '/shared' },
-  { label: 'Starred', icon: Star, href: '/starred', disabled: true },
+  { label: 'Quota Tracker', icon: Gauge, href: '/quota' },
+  { label: 'Archived', icon: Archive, href: '/archived' },
   { label: 'Recycle Bin', icon: Trash2, href: '/trash' },
   { label: 'Activity Log', icon: History, href: '/activity' },
   { label: 'Setting', icon: Settings, href: '/settings' },
@@ -59,6 +65,7 @@ type StorageBreakdown = {
 
 function SystemInfoDropdown({ storage }: { storage: any }) {
   const activeGoogle = storage?.accounts?.filter((a: any) => a.provider === 'google_drive' && a.status === 'connected') ?? []
+  const activeS3 = storage?.accounts?.filter((a: any) => a.provider === 's3' && a.status === 'connected') ?? []
 
   return (
     <div className="absolute right-0 top-12 z-50 w-[min(calc(100vw-2rem),22rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/15">
@@ -72,7 +79,7 @@ function SystemInfoDropdown({ storage }: { storage: any }) {
           <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> Connection Status</h4>
           <div className="mt-2 space-y-2">
             <div className="flex items-center justify-between text-xs rounded-xl bg-slate-50 p-2.5 border border-slate-100">
-              <span className="font-semibold text-slate-700">Google Drive accounts</span>
+              <span className="font-semibold text-slate-700">Google Drive Accounts</span>
               <span className={activeGoogle.length > 0 ? "text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-100" : "text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-bold border border-amber-100"}>
                 {activeGoogle.length} Connected
               </span>
@@ -80,16 +87,24 @@ function SystemInfoDropdown({ storage }: { storage: any }) {
             {activeGoogle.map((acc: any) => (
               <p key={acc.id} className="text-[11px] text-slate-500 truncate px-2.5">— {acc.email}</p>
             ))}
+            {activeS3.length > 0 && (
+              <div className="flex items-center justify-between text-xs rounded-xl bg-slate-50 p-2.5 border border-slate-100 mt-1">
+                <span className="font-semibold text-slate-700">S3 Buckets</span>
+                <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-bold border border-blue-100">
+                  {activeS3.length} Connected
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Database & engine status */}
         <div>
-          <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5"><HardDrive className="h-3.5 w-3.5 text-blue-500" /> Storage Engine</h4>
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5"><HardDrive className="h-3.5 w-3.5 text-blue-500" /> Storage Gateway</h4>
           <div className="mt-2 text-xs text-slate-600 space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-            <p>• <b>DB Type:</b> SQLite (Local Database)</p>
-            <p>• <b>Upload Folder:</b> Google Drive dedicated <code>9drive</code></p>
-            <p>• <b>Max Upload Size:</b> 5 GB per stream</p>
+            <p>• <b>Sync Engine:</b> Full Native Drive Synchronization</p>
+            <p>• <b>Upload Mode:</b> Direct Stream with Quota Routing</p>
+            <p>• <b>Max Upload Size:</b> Up to 5 GB per stream</p>
           </div>
         </div>
 
@@ -97,9 +112,9 @@ function SystemInfoDropdown({ storage }: { storage: any }) {
         <div>
           <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5"><Info className="h-3.5 w-3.5 text-indigo-500" /> Usage Tips</h4>
           <ul className="mt-2 text-[11px] text-slate-500 list-disc list-inside space-y-1 pl-1">
-            <li>Virtual folders exist only in your SQLite database.</li>
-            <li>Physical files are always uploaded straight to Google Drive.</li>
-            <li>Use the Sync button to fetch changes made directly on Drive.</li>
+            <li>Files in your connected Google Drives and S3 are synchronized in real-time.</li>
+            <li>Star important files or drag & drop files directly into folders.</li>
+            <li>Use the Sync button to refresh any recent changes made directly on Drive.</li>
           </ul>
         </div>
       </div>
@@ -303,7 +318,52 @@ export function DriveLayout() {
     navigate('/login')
   }
 
+  // Live Search States
+  const [liveResults, setLiveResults] = useState<{ files: any[]; folders: any[] }>({ files: [], folders: [] })
+  const [liveLoading, setLiveLoading] = useState(false)
+  const [liveSearchOpen, setLiveSearchOpen] = useState(false)
+  const searchContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const query = searchValue.trim()
+    if (!query || query.length < 2) {
+      setLiveResults({ files: [], folders: [] })
+      setLiveSearchOpen(false)
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      setLiveLoading(true)
+      try {
+        const [fileData, folderData] = await Promise.all([
+          apiFetch<{ files: any[] }>(`/files?q=${encodeURIComponent(query)}`),
+          apiFetch<{ folders: any[] }>(`/folders?all=1`)
+        ])
+        const matchedFolders = folderData.folders.filter((f) => f.name.toLowerCase().includes(query.toLowerCase())).slice(0, 4)
+        setLiveResults({ files: fileData.files.slice(0, 6), folders: matchedFolders })
+        setLiveSearchOpen(true)
+      } catch {
+        // ignore
+      } finally {
+        setLiveLoading(false)
+      }
+    }, 250)
+
+    return () => clearTimeout(timer)
+  }, [searchValue])
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setLiveSearchOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   function applyFilters() {
+    setLiveSearchOpen(false)
     const nextParams = new URLSearchParams()
     const activeFolderId = searchParams.get('folderId')
     if (activeFolderId && location.pathname === '/all-files') {
@@ -376,7 +436,10 @@ export function DriveLayout() {
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') setInfoOpen(false)
+      if (event.key === 'Escape') {
+        setInfoOpen(false)
+        setLiveSearchOpen(false)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -422,12 +485,70 @@ export function DriveLayout() {
                 </div>
               </div>
             </div>
-            <div className="relative w-full min-w-0 flex-1 lg:max-w-sm xl:max-w-xl">
+            <div ref={searchContainerRef} className="relative w-full min-w-0 flex-1 lg:max-w-sm xl:max-w-xl">
               <form onSubmit={searchFiles} className="relative w-full">
                 <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-                <Input value={searchValue} onChange={(event) => setSearchValue(event.target.value)} placeholder="Search Documents" className="pl-11 pr-12" />
+                <Input value={searchValue} onFocus={() => { if (searchValue.trim().length >= 2) setLiveSearchOpen(true) }} onChange={(event) => setSearchValue(event.target.value)} placeholder="Search Documents, Folders, or Files..." className="pl-11 pr-12" />
                 <button type="button" onClick={() => setFiltersOpen(!filtersOpen)} className={cn("absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 transition-colors", filtersOpen && "text-blue-600 hover:text-blue-700")} aria-label="Search filters"><SlidersHorizontal className="h-5 w-5" /></button>
               </form>
+
+              {/* Live search dropdown popover */}
+              {liveSearchOpen && (liveResults.folders.length > 0 || liveResults.files.length > 0 || liveLoading) && (
+                <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs font-bold text-slate-500">
+                    <span>Instant Search Suggestions</span>
+                    {liveLoading && <span className="text-blue-600 animate-pulse">Searching...</span>}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto p-2 space-y-1">
+                    {liveResults.folders.length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase font-bold text-slate-400 px-3 py-1">Folders</p>
+                        {liveResults.folders.map((folder) => (
+                          <button
+                            key={folder.id}
+                            type="button"
+                            onClick={() => {
+                              setLiveSearchOpen(false)
+                              navigate(`/all-files?folderId=${folder.id}`)
+                            }}
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-100 transition-colors"
+                          >
+                            <Folder className="h-4 w-4 text-blue-600 shrink-0" />
+                            <span className="truncate font-semibold text-slate-800">{folder.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {liveResults.files.length > 0 && (
+                      <div className="mt-1">
+                        <p className="text-[10px] uppercase font-bold text-slate-400 px-3 py-1">Files</p>
+                        {liveResults.files.map((file) => (
+                          <button
+                            key={file.id}
+                            type="button"
+                            onClick={() => {
+                              setLiveSearchOpen(false)
+                              navigate(`/all-files?q=${encodeURIComponent(file.name)}`)
+                            }}
+                            className="flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-100 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="h-4 w-4 text-slate-500 shrink-0" />
+                              <span className="truncate font-semibold text-slate-800">{file.name}</span>
+                            </div>
+                            <span className="text-xs text-slate-400 shrink-0">{formatBytes(file.sizeBytes)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2 border-t border-slate-100 bg-slate-50 flex justify-end">
+                    <button type="button" onClick={applyFilters} className="text-xs font-bold text-blue-600 hover:text-blue-700 px-2 py-1">
+                      Press Enter to see all results →
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {filtersOpen && (
                 <div className="absolute left-0 right-0 top-12 z-50 rounded-2xl border border-slate-200 bg-white/95 p-5 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">

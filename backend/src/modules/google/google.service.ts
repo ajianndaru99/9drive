@@ -95,6 +95,7 @@ export type GoogleAppFolderSyncResult = {
   created: number
   updated: number
   deleted: number
+  foldersCreated?: number
 }
 
 type DriveFileMetadata = {
@@ -180,4 +181,144 @@ export async function syncGoogleAppFolderFiles(accountId: string, userId: string
 
   await syncGoogleQuota(account.id).catch(() => undefined)
   return { accountId: account.id, created, updated, deleted }
+}
+
+export async function syncGoogleFullDrive(accountId: string, userId: string): Promise<GoogleAppFolderSyncResult> {
+  const account = await prisma.connectedAccount.findFirstOrThrow({ where: { id: accountId, userId, provider: 'google_drive', status: 'connected' } })
+  const auth = await getAuthedGoogleClient(account)
+  const drive = google.drive({ version: 'v3', auth })
+
+  // 1. Fetch all native folders from Google Drive
+  type NativeFolder = { id: string; name: string; parentProviderId?: string }
+  const driveFolders: NativeFolder[] = []
+  let folderPageToken: string | undefined
+
+  do {
+    const folderRes = await drive.files.list({
+      q: `mimeType = '${googleDriveFolderMimeType}' and trashed = false`,
+      spaces: 'drive',
+      fields: 'nextPageToken,files(id,name,parents)',
+      pageSize: 1000,
+      pageToken: folderPageToken,
+    })
+    for (const f of folderRes.data.files ?? []) {
+      if (f.id && f.name) {
+        driveFolders.push({ id: f.id, name: f.name, parentProviderId: f.parents?.[0] })
+      }
+    }
+    folderPageToken = folderRes.data.nextPageToken ?? undefined
+  } while (folderPageToken)
+
+  // 2. Fetch all native files from Google Drive
+  const driveFiles: DriveFileMetadata[] = []
+  let filePageToken: string | undefined
+
+  do {
+    const fileRes = await drive.files.list({
+      q: `mimeType != '${googleDriveFolderMimeType}' and trashed = false`,
+      spaces: 'drive',
+      fields: 'nextPageToken,files(id,name,mimeType,size,parents)',
+      pageSize: 1000,
+      pageToken: filePageToken,
+    })
+    for (const file of fileRes.data.files ?? []) {
+      if (!file.id || !file.name || !file.mimeType) continue
+      const parentId = file.parents?.[0] ?? ''
+      driveFiles.push({ id: file.id, name: file.name, mimeType: file.mimeType, sizeBytes: BigInt(file.size ?? 0), parentId })
+    }
+    filePageToken = fileRes.data.nextPageToken ?? undefined
+  } while (filePageToken)
+
+  // 3. Upsert native folders in database
+  const existingFolders = await prisma.folder.findMany({ where: { userId, connectedAccountId: account.id } })
+  const folderByProviderId = new Map(existingFolders.map((f) => [f.providerFolderId, f]))
+  let foldersCreated = 0
+
+  for (const df of driveFolders) {
+    const existing = folderByProviderId.get(df.id)
+    if (!existing) {
+      const created = await prisma.folder.create({
+        data: {
+          userId,
+          connectedAccountId: account.id,
+          provider: 'google_drive',
+          providerFolderId: df.id,
+          name: df.name,
+          deletedAt: null
+        }
+      })
+      folderByProviderId.set(df.id, created)
+      foldersCreated += 1
+    } else if (existing.name !== df.name || existing.deletedAt !== null) {
+      const updated = await prisma.folder.update({
+        where: { id: existing.id },
+        data: { name: df.name, deletedAt: null }
+      })
+      folderByProviderId.set(df.id, updated)
+    }
+  }
+
+  // Update folder parent relationships
+  for (const df of driveFolders) {
+    const current = folderByProviderId.get(df.id)
+    if (current && df.parentProviderId) {
+      const parentRecord = folderByProviderId.get(df.parentProviderId)
+      if (parentRecord && current.parentId !== parentRecord.id) {
+        await prisma.folder.update({
+          where: { id: current.id },
+          data: { parentId: parentRecord.id }
+        }).catch(() => undefined)
+      }
+    }
+  }
+
+  // 4. Upsert native files in database
+  const existingFiles = await prisma.file.findMany({ where: { userId, connectedAccountId: account.id, provider: 'google_drive' } })
+  const existingByProviderId = new Map(existingFiles.map((file) => [file.providerFileId, file]))
+  const driveFileIds = new Set(driveFiles.map((file) => file.id))
+  let created = 0
+  let updated = 0
+  let deleted = 0
+
+  for (const driveFile of driveFiles) {
+    const parentFolder = folderByProviderId.get(driveFile.parentId)
+    const dbFolderId = parentFolder?.id ?? null
+    const existing = existingByProviderId.get(driveFile.id)
+
+    if (!existing) {
+      await prisma.file.create({
+        data: {
+          userId,
+          connectedAccountId: account.id,
+          provider: 'google_drive',
+          providerFileId: driveFile.id,
+          name: driveFile.name,
+          mimeType: driveFile.mimeType,
+          sizeBytes: driveFile.sizeBytes,
+          status: 'active',
+          folderId: dbFolderId
+        },
+      })
+      created += 1
+      continue
+    }
+
+    const needsUpdate = existing.name !== driveFile.name || existing.mimeType !== driveFile.mimeType || existing.sizeBytes !== driveFile.sizeBytes || existing.status !== 'active' || existing.deletedAt !== null || existing.folderId !== dbFolderId
+    if (needsUpdate) {
+      await prisma.file.update({
+        where: { id: existing.id },
+        data: { name: driveFile.name, mimeType: driveFile.mimeType, sizeBytes: driveFile.sizeBytes, status: 'active', deletedAt: null, folderId: dbFolderId },
+      })
+      updated += 1
+    }
+  }
+
+  const missingActiveIds = existingFiles.filter((file) => file.status === 'active' && !driveFileIds.has(file.providerFileId)).map((file) => file.id)
+  if (missingActiveIds.length > 0) {
+    const result = await prisma.file.updateMany({ where: { id: { in: missingActiveIds }, userId }, data: { status: 'deleted', deletedAt: new Date() } })
+    deleted = result.count
+  }
+
+  await syncGoogleQuota(account.id).catch(() => undefined)
+  return { accountId: account.id, created, updated, deleted, foldersCreated }
 }
