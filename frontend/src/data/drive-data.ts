@@ -21,6 +21,7 @@ export type FileItem = {
   access: string
   accountEmail?: string
   accountProvider?: string
+  connectedAccountId?: string | null
   createdAt?: string
   kind: 'doc' | 'image' | 'video' | 'pdf'
   shared: number

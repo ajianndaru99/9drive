@@ -1,7 +1,10 @@
+import { Readable } from 'node:stream'
 import { google } from 'googleapis'
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import type { ConnectedAccount, ProviderConfig } from '@prisma/client'
 import { prisma } from '../../config/prisma.js'
 import { decryptText, encryptText } from '../../utils/crypto.js'
+import { createS3Client, getS3ConfigForAccount } from '../s3/s3.service.js'
 
 const googleDriveFolderMimeType = 'application/vnd.google-apps.folder'
 const appFolderName = '9drive'
@@ -322,3 +325,156 @@ export async function syncGoogleFullDrive(accountId: string, userId: string): Pr
   await syncGoogleQuota(account.id).catch(() => undefined)
   return { accountId: account.id, created, updated, deleted, foldersCreated }
 }
+
+export async function transferFileBetweenAccounts({
+  fileId,
+  userId,
+  targetAccountId,
+  deleteSource = true,
+}: {
+  fileId: string
+  userId: string
+  targetAccountId: string
+  deleteSource?: boolean
+}) {
+  const file = await prisma.file.findFirstOrThrow({
+    where: { id: fileId, userId, status: 'active' },
+    include: { connectedAccount: true },
+  })
+
+  if (file.connectedAccountId === targetAccountId) {
+    throw new Error('File is already stored in the selected account')
+  }
+
+  const targetAccount = await prisma.connectedAccount.findFirstOrThrow({
+    where: { id: targetAccountId, userId, status: 'connected' },
+  })
+
+  const sourceAccount = file.connectedAccount
+  if (!sourceAccount) {
+    throw new Error('Source storage account is not available')
+  }
+
+  // 1. Get readable stream from source
+  let stream: Readable
+  if (sourceAccount.provider === 'google_drive') {
+    const authSource = await getAuthedGoogleClient(sourceAccount)
+    const driveSource = google.drive({ version: 'v3', auth: authSource })
+    const res = await driveSource.files.get(
+      { fileId: file.providerFileId, alt: 'media' },
+      { responseType: 'stream' }
+    )
+    stream = res.data as unknown as Readable
+  } else if (sourceAccount.provider === 's3') {
+    const s3Config = await getS3ConfigForAccount(sourceAccount.id)
+    const s3Client = createS3Client(s3Config)
+    const getObj = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: s3Config.bucket,
+        Key: file.providerFileId,
+      })
+    )
+    if (!getObj.Body) throw new Error('Failed to read file from S3')
+    stream = getObj.Body as unknown as Readable
+  } else {
+    throw new Error(`Unsupported source provider: ${sourceAccount.provider}`)
+  }
+
+  // 2. Stream directly into target account
+  let newProviderFileId: string
+  if (targetAccount.provider === 'google_drive') {
+    const authTarget = await getAuthedGoogleClient(targetAccount)
+    const driveTarget = google.drive({ version: 'v3', auth: authTarget })
+    const appFolderId = await ensureGoogleAppFolder(targetAccount)
+
+    const uploadRes = await driveTarget.files.create({
+      requestBody: {
+        name: file.name,
+        parents: [appFolderId],
+      },
+      media: {
+        mimeType: file.mimeType,
+        body: stream,
+      },
+      fields: 'id',
+    })
+
+    if (!uploadRes.data.id) {
+      throw new Error('Failed to upload file to target Google Drive')
+    }
+    newProviderFileId = uploadRes.data.id
+  } else if (targetAccount.provider === 's3') {
+    const s3Config = await getS3ConfigForAccount(targetAccount.id)
+    const s3Client = createS3Client(s3Config)
+    const targetKey = `9drive/${Date.now()}-${file.name}`
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: s3Config.bucket,
+        Key: targetKey,
+        Body: stream,
+        ContentType: file.mimeType,
+      })
+    )
+    newProviderFileId = targetKey
+  } else {
+    throw new Error(`Unsupported target provider: ${targetAccount.provider}`)
+  }
+
+  // 3. If deleteSource, remove from source account
+  if (deleteSource) {
+    try {
+      if (sourceAccount.provider === 'google_drive') {
+        const authSource = await getAuthedGoogleClient(sourceAccount)
+        const driveSource = google.drive({ version: 'v3', auth: authSource })
+        await driveSource.files.delete({ fileId: file.providerFileId })
+      } else if (sourceAccount.provider === 's3') {
+        const s3Config = await getS3ConfigForAccount(sourceAccount.id)
+        const s3Client = createS3Client(s3Config)
+        await s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: s3Config.bucket,
+            Key: file.providerFileId,
+          })
+        )
+      }
+    } catch (cleanupErr) {
+      console.error('Failed to cleanup source file after transfer', cleanupErr)
+    }
+
+    // Update database record to point to target account
+    const updated = await prisma.file.update({
+      where: { id: file.id },
+      data: {
+        connectedAccountId: targetAccount.id,
+        provider: targetAccount.provider,
+        providerFileId: newProviderFileId,
+      },
+    })
+
+    // Update quotas
+    if (sourceAccount.provider === 'google_drive') await syncGoogleQuota(sourceAccount.id).catch(() => undefined)
+    if (targetAccount.provider === 'google_drive') await syncGoogleQuota(targetAccount.id).catch(() => undefined)
+
+    return updated
+  } else {
+    // If not deleting source, create a duplicate file record
+    const duplicated = await prisma.file.create({
+      data: {
+        userId,
+        connectedAccountId: targetAccount.id,
+        provider: targetAccount.provider,
+        providerFileId: newProviderFileId,
+        name: file.name,
+        mimeType: file.mimeType,
+        sizeBytes: file.sizeBytes,
+        folderId: file.folderId,
+        status: 'active',
+      },
+    })
+
+    if (targetAccount.provider === 'google_drive') await syncGoogleQuota(targetAccount.id).catch(() => undefined)
+
+    return duplicated
+  }
+}
+

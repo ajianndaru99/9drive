@@ -117,13 +117,20 @@ folderRouter.get('/starred', async (req: AuthRequest, res, next) => {
 
 folderRouter.get('/', async (req: AuthRequest, res, next) => {
   try {
-    const query = z.object({ parentId: z.string().nullable().optional(), all: z.string().optional(), starred: z.string().optional(), archived: z.string().optional() }).parse(req.query)
+    const query = z.object({
+      parentId: z.string().nullable().optional(),
+      all: z.string().optional(),
+      starred: z.string().optional(),
+      archived: z.string().optional(),
+      accountId: z.string().optional(),
+    }).parse(req.query)
     const folders = await prisma.folder.findMany({
       where: {
         userId: req.user!.id,
         deletedAt: null,
         isArchived: query.archived === '1' ? true : false,
         ...(query.starred === '1' ? { isStarred: true } : {}),
+        ...(query.accountId ? { connectedAccountId: query.accountId } : {}),
         ...(query.all === '1' ? {} : { parentId: query.parentId ?? null })
       },
       select: { id: true, name: true, color: true, iconUrl: true, parentId: true, providerFolderId: true, isStarred: true, isArchived: true, createdAt: true, updatedAt: true },

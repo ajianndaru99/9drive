@@ -1,4 +1,4 @@
-import { Copy, Download, Edit3, Eye, FolderInput, Info, Link2, Trash2, UserPlus, Star, Archive } from 'lucide-react'
+import { Copy, Download, Edit3, Eye, FolderInput, Info, Link2, Trash2, UserPlus, Star, Archive, ArrowRightLeft } from 'lucide-react'
 import type { FileItem } from '@/data/drive-data'
 
 type Props = {
@@ -17,6 +17,7 @@ type Props = {
   onDelete: () => void
   onStar?: () => void
   onArchive?: () => void
+  onTransferStorage?: () => void
 }
 
 const kindColors: Record<string, string> = {
@@ -63,7 +64,7 @@ function MenuItem({ icon: Icon, label, onClick, danger = false, kbd }: { icon: R
   )
 }
 
-export function FileContextMenu({ x, y, file, onClose, onView, onDownload, onRename, onMove, onDetails, onShare, onCopyLink, onInvite, onDelete, onStar, onArchive }: Props) {
+export function FileContextMenu({ x, y, file, onClose, onView, onDownload, onRename, onMove, onDetails, onShare, onCopyLink, onInvite, onDelete, onStar, onArchive, onTransferStorage }: Props) {
   if (!file) return null
 
   const safeX = Math.max(12, Math.min(x, window.innerWidth - 228))
@@ -129,6 +130,7 @@ export function FileContextMenu({ x, y, file, onClose, onView, onDownload, onRen
           {onStar && <MenuItem icon={Star} label={file.isStarred ? 'Unstar' : 'Add to Starred'} onClick={onStar} />}
           <MenuItem icon={Edit3} label="Rename" onClick={onRename} />
           <MenuItem icon={FolderInput} label="Move to Folder" onClick={onMove} />
+          {onTransferStorage && <MenuItem icon={ArrowRightLeft} label="Transfer Drive Account" onClick={onTransferStorage} />}
           {onArchive && <MenuItem icon={Archive} label={file.isArchived ? 'Unarchive' : 'Archive'} onClick={onArchive} />}
           <MenuItem icon={Info} label="Details" onClick={onDetails} />
 

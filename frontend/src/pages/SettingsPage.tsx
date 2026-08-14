@@ -306,6 +306,8 @@ export function SettingsPage() {
     }
   }
 
+  const [syncingFilesAccountId, setSyncingFilesAccountId] = useState<string | null>(null)
+
   async function sync(accountId: string) {
     setSyncingAccountId(accountId)
     try {
@@ -314,6 +316,26 @@ export function SettingsPage() {
       window.dispatchEvent(new Event('9drive:storage-changed'))
     } finally {
       setSyncingAccountId(null)
+    }
+  }
+
+  async function syncFullFiles(accountId: string) {
+    setSyncingFilesAccountId(accountId)
+    setMessage('')
+    try {
+      const data = await apiFetch<{ status: string; results?: Array<{ created: number; updated: number; deleted: number; foldersCreated?: number }> }>('/files/sync-google', {
+        method: 'POST',
+        body: JSON.stringify({ connectedAccountId: accountId, mode: 'full' }),
+      })
+      const totalCreated = (data.results || []).reduce((acc, r) => acc + (r.created || 0) + (r.foldersCreated || 0), 0)
+      const totalUpdated = (data.results || []).reduce((acc, r) => acc + (r.updated || 0), 0)
+      setMessage(`Full scan complete! ${totalCreated} existing files/folders imported, ${totalUpdated} updated.`)
+      await load()
+      window.dispatchEvent(new Event('9drive:storage-changed'))
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to sync Google Drive files')
+    } finally {
+      setSyncingFilesAccountId(null)
     }
   }
 
@@ -410,7 +432,20 @@ export function SettingsPage() {
                 {selectedAccount ? <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 border border-slate-200/60 dark:border-slate-700/60">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0"><p className="break-all font-semibold text-sm text-slate-900 dark:text-white">{selectedAccount.displayName || selectedAccount.email}</p><p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{providerLabel(selectedAccount.provider)} · {selectedAccount.status}</p></div>
-                    <div className="grid grid-cols-2 gap-2 sm:flex"><Button className="w-full" size="sm" variant="outline" onClick={() => sync(selectedAccount.id)} disabled={syncingAccountId === selectedAccount.id}><RefreshCw className={syncingAccountId === selectedAccount.id ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />{syncingAccountId === selectedAccount.id ? 'Syncing...' : 'Sync'}</Button><Button className="w-full" size="sm" variant="danger" onClick={() => setAccountToDisconnect(selectedAccount)}><Trash2 className="h-4 w-4" />Disconnect</Button></div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" onClick={() => syncFullFiles(selectedAccount.id)} disabled={syncingFilesAccountId === selectedAccount.id} title="Scan and import all existing Google Drive files">
+                        <RefreshCw className={syncingFilesAccountId === selectedAccount.id ? 'h-3.5 w-3.5 animate-spin text-blue-600' : 'h-3.5 w-3.5'} />
+                        {syncingFilesAccountId === selectedAccount.id ? 'Scanning...' : 'Sync Files'}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => sync(selectedAccount.id)} disabled={syncingAccountId === selectedAccount.id} title="Refresh quota usage">
+                        <RefreshCw className={syncingAccountId === selectedAccount.id ? 'h-3.5 w-3.5 animate-spin' : 'h-3.5 w-3.5'} />
+                        Quota
+                      </Button>
+                      <Button size="sm" variant="danger" onClick={() => setAccountToDisconnect(selectedAccount)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Disconnect
+                      </Button>
+                    </div>
                   </div>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
                     <div className="rounded-xl bg-white dark:bg-slate-800 p-2 border border-slate-200/60 dark:border-slate-700"><p className="font-extrabold text-slate-900 dark:text-white">{formatBytes(selectedAccount.storageAccount?.usedBytes)}</p><p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">Used</p></div>

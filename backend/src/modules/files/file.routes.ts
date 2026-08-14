@@ -5,7 +5,7 @@ import { prisma } from '../../config/prisma.js'
 import { env } from '../../config/env.js'
 import { requireAuth, type AuthRequest } from '../../middleware/auth.middleware.js'
 import { hashToken, randomToken } from '../../utils/crypto.js'
-import { getAuthedGoogleClient, syncGoogleAppFolderFiles, syncGoogleFullDrive, syncGoogleQuota } from '../google/google.service.js'
+import { getAuthedGoogleClient, syncGoogleAppFolderFiles, syncGoogleFullDrive, syncGoogleQuota, transferFileBetweenAccounts } from '../google/google.service.js'
 import { deleteS3Object, syncS3Quota, createS3Client, getS3ConfigForAccount, syncS3BucketFiles } from '../s3/s3.service.js'
 import { streamProviderFile } from './stream-file.js'
 import { googleDownloadExportMimeTypes, normalizeHeaders, withExtension } from './stream-google-file.js'
@@ -316,6 +316,77 @@ fileRouter.post('/sync-google', async (req: AuthRequest, res, next) => {
     return res.json({
       status: 'ok',
       results,
+    })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+fileRouter.post('/:id/transfer-storage', async (req: AuthRequest, res, next) => {
+  try {
+    const fileId = String(req.params.id)
+    const body = z.object({
+      targetAccountId: z.string().min(1),
+      deleteSource: z.boolean().default(true),
+    }).parse(req.body)
+
+    const updated = await transferFileBetweenAccounts({
+      fileId,
+      userId: req.user!.id,
+      targetAccountId: body.targetAccountId,
+      deleteSource: body.deleteSource,
+    })
+
+    await createAuditLog(req.user!.id, 'TRANSFER_STORAGE', 'file', updated.id, {
+      name: updated.name,
+      targetAccountId: body.targetAccountId,
+      deleteSource: body.deleteSource,
+    })
+
+    return res.json({
+      status: 'ok',
+      file: { ...updated, sizeBytes: updated.sizeBytes.toString() },
+    })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+fileRouter.post('/batch/transfer-storage', async (req: AuthRequest, res, next) => {
+  try {
+    const body = z.object({
+      fileIds: z.array(z.string().min(1)).min(1),
+      targetAccountId: z.string().min(1),
+      deleteSource: z.boolean().default(true),
+    }).parse(req.body)
+
+    const results = []
+    const errors = []
+
+    for (const fileId of body.fileIds) {
+      try {
+        const updated = await transferFileBetweenAccounts({
+          fileId,
+          userId: req.user!.id,
+          targetAccountId: body.targetAccountId,
+          deleteSource: body.deleteSource,
+        })
+        results.push({ id: updated.id, name: updated.name, success: true })
+      } catch (err: any) {
+        errors.push({ id: fileId, error: err?.message || 'Transfer failed' })
+      }
+    }
+
+    await createAuditLog(req.user!.id, 'BATCH_TRANSFER_STORAGE', 'file', 'batch', {
+      transferredCount: results.length,
+      failedCount: errors.length,
+      targetAccountId: body.targetAccountId,
+    })
+
+    return res.json({
+      status: 'ok',
+      transferred: results,
+      failed: errors,
     })
   } catch (error) {
     return next(error)
