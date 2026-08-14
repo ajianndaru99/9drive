@@ -1,3 +1,4 @@
+import { Readable } from 'node:stream'
 import type { Response } from 'express'
 import type { ConnectedAccount, File } from '@prisma/client'
 import { getAuthedGoogleClient } from '../google/google.service.js'
@@ -30,16 +31,34 @@ export function normalizeHeaders(headers: Headers | Record<string, string>) {
   return headers
 }
 
-
 export async function streamGoogleFile(file: FileWithAccount, range: string | undefined, res: Response, options: StreamOptions = {}) {
   const auth = await getAuthedGoogleClient(file.connectedAccount)
   const headers = normalizeHeaders(await auth.getRequestHeaders())
   const exportTarget = (options.disposition === 'inline' ? googlePreviewExportMimeTypes : googleDownloadExportMimeTypes)[file.mimeType]
-  const responseMimeType = exportTarget?.mimeType ?? file.mimeType
+
+  // Resolve accurate MIME type
+  let responseMimeType = exportTarget?.mimeType ?? file.mimeType
+  if (!responseMimeType || responseMimeType === 'application/octet-stream') {
+    const ext = file.name.toLowerCase().split('.').pop()
+    if (ext === 'pdf') responseMimeType = 'application/pdf'
+    else if (ext === 'mov') responseMimeType = 'video/quicktime'
+    else if (ext === 'mp4') responseMimeType = 'video/mp4'
+    else if (ext === 'webm') responseMimeType = 'video/webm'
+    else if (ext === 'mkv') responseMimeType = 'video/x-matroska'
+    else if (ext === 'jpg' || ext === 'jpeg') responseMimeType = 'image/jpeg'
+    else if (ext === 'png') responseMimeType = 'image/png'
+    else if (ext === 'gif') responseMimeType = 'image/gif'
+    else if (ext === 'webp') responseMimeType = 'image/webp'
+    else if (ext === 'svg') responseMimeType = 'image/svg+xml'
+    else if (ext === 'mp3') responseMimeType = 'audio/mpeg'
+    else if (ext === 'wav') responseMimeType = 'audio/wav'
+  }
+
   const responseFileName = exportTarget ? withExtension(file.name, exportTarget.extension) : file.name
   const url = exportTarget
     ? `https://www.googleapis.com/drive/v3/files/${file.providerFileId}/export?mimeType=${encodeURIComponent(exportTarget.mimeType)}`
     : `https://www.googleapis.com/drive/v3/files/${file.providerFileId}?alt=media`
+
   const response = await fetch(url, {
     headers: {
       ...headers,
@@ -55,6 +74,7 @@ export async function streamGoogleFile(file: FileWithAccount, range: string | un
   res.status(response.status)
   res.setHeader('Content-Type', responseMimeType)
   res.setHeader('Accept-Ranges', 'bytes')
+  res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400')
   if (options.disposition) res.setHeader('Content-Disposition', contentDisposition(options.disposition, responseFileName))
 
   const contentLength = response.headers.get('content-length')
@@ -66,15 +86,13 @@ export async function streamGoogleFile(file: FileWithAccount, range: string | un
     res.end()
     return
   }
-  const reader = response.body.getReader()
-  async function pump(): Promise<void> {
-    const { done, value } = await reader.read()
-    if (done) {
-      res.end()
-      return
-    }
-    res.write(Buffer.from(value))
-    return pump()
-  }
-  return pump()
+
+  // Use native stream pipeline for maximum throughput without memory buffer latency
+  const nodeStream = Readable.fromWeb(response.body as any)
+  nodeStream.pipe(res)
+
+  res.on('close', () => {
+    nodeStream.destroy()
+  })
 }
+
