@@ -173,14 +173,14 @@ function Sidebar({
   }, [userMenuOpen])
 
   return (
-    <aside className="flex h-full w-64 flex-col border-slate-200/60 bg-slate-50/40 backdrop-blur-xl p-4 lg:border-r">
+    <aside className="flex h-full w-64 flex-col border-slate-200/80 bg-white dark:border-slate-800/80 dark:bg-[#0b1120] p-4 lg:border-r transition-colors duration-200">
       <div className="flex items-center gap-2.5 pb-3 pt-1">
         <BrandLogo className="h-8 w-8" />
         <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">9Drive</span>
       </div>
 
       <div ref={userMenuRef} className="relative">
-        <div className="flex items-center gap-2.5 border-y border-slate-200/60 py-3 my-3">
+        <div className="flex items-center gap-2.5 border-y border-slate-200/60 dark:border-slate-800/80 py-3 my-3">
           {!profileImageUrl || avatarError ? (
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-sm border border-blue-400/20">
               {(user?.name ?? user?.email ?? 'U').trim().charAt(0).toUpperCase()}
@@ -189,13 +189,13 @@ function Sidebar({
             <img
               src={profileImageUrl}
               alt="User avatar"
-              className="h-8 w-8 rounded-full border border-slate-200 object-cover"
+              className="h-8 w-8 rounded-full border border-slate-200 dark:border-slate-700 object-cover"
               onError={() => setAvatarError(true)}
             />
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-bold text-slate-900 leading-none">{user?.name ?? 'User'}</p>
-            <p className="truncate text-xs text-slate-500 mt-1">{user?.email ?? 'Loading...'}</p>
+            <p className="truncate text-[15px] font-bold text-slate-900 dark:text-slate-100 leading-none">{user?.name ?? 'User'}</p>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400 mt-1">{user?.email ?? 'Loading...'}</p>
           </div>
           <button
             type="button"
@@ -209,7 +209,10 @@ function Sidebar({
 
         {/* Interactive User Avatar 3-Dots Menu Popover */}
         {userMenuOpen && (
-          <div className="absolute left-0 right-0 top-16 z-[100] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-950/30 dark:border-slate-800 dark:bg-[#0c1220] user-menu-popover animate-in fade-in slide-in-from-top-2 duration-150">
+          <div
+            className="absolute left-0 right-0 top-16 z-[100] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-800 dark:bg-[#0d1424] user-menu-popover animate-in fade-in slide-in-from-top-2 duration-150"
+            style={{ backgroundColor: theme === 'dark' ? '#0d1424' : '#ffffff' }}
+          >
             <div className="border-b border-slate-100 dark:border-slate-800/80 px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl mb-1.5">
               <p className="truncate text-xs font-bold text-slate-900 dark:text-white">{user?.name ?? 'User Account'}</p>
               <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{user?.email}</p>

@@ -1,23 +1,25 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:is(.dark, .dark *));
 
 :root {
-  --bg-gradient: radial-gradient(at 0% 0%, rgba(224, 231, 255, 0.45) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(254, 244, 244, 0.45) 0px, transparent 50%),
-    #f8fafc;
+  --bg-app: #f8fafc;
+  --bg-sidebar: #ffffff;
+  --bg-surface: #ffffff;
+  --border-main: #e2e8f0;
   --text-primary: #0f172a;
   --text-secondary: #64748b;
   --text-bold: #0f172a;
 }
 
-:root.dark, .dark {
-  --bg-gradient: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.14) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(244, 63, 94, 0.08) 0px, transparent 50%),
-    #070b14;
+:root.dark, html.dark, body.dark {
+  --bg-app: #070b14;
+  --bg-sidebar: #0b1120;
+  --bg-surface: #0f172a;
+  --border-main: #1e293b;
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
-  --text-bold: #f8fafc;
+  --text-bold: #ffffff;
 }
 
 * {
@@ -29,39 +31,42 @@ html, body {
   margin: 0;
   font-family: Manrope, ui-sans-serif, system-ui, sans-serif;
   color: var(--text-primary);
-  background: var(--bg-gradient);
-  background-attachment: fixed;
+  background-color: var(--bg-app);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 button, input, select, textarea {
   font: inherit;
 }
 
-/* User Menu Popover - Solid and opaque */
+/* User Menu Popover - 100% Solid and Opaque */
 .user-menu-popover {
   background-color: #ffffff !important;
   color: #0f172a !important;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
 }
-:where(.dark, .dark *) .user-menu-popover {
+:where(.dark, .dark *) .user-menu-popover, html.dark .user-menu-popover {
   background-color: #0d1424 !important;
   color: #f8fafc !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Floating Upload Progress Panel */
+/* Floating Upload Progress Panel - 100% Solid and Opaque */
 .floating-upload-panel {
   background-color: #ffffff !important;
   color: #0f172a !important;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
 }
-:where(.dark, .dark *) .floating-upload-panel {
+:where(.dark, .dark *) .floating-upload-panel, html.dark .floating-upload-panel {
   background-color: #0d1424 !important;
   color: #f8fafc !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Selection Highlight */
@@ -69,7 +74,7 @@ button, input, select, textarea {
   background-color: rgba(59, 130, 246, 0.08) !important;
   border-color: rgba(59, 130, 246, 0.3) !important;
 }
-:where(.dark, .dark *) .file-selected {
+:where(.dark, .dark *) .file-selected, html.dark .file-selected {
   background-color: rgba(99, 102, 241, 0.15) !important;
   border-color: rgba(99, 102, 241, 0.4) !important;
 }

@@ -105,26 +105,26 @@ export function FileTable({
 
       {/* Desktop table view */}
       <div className="hidden overflow-x-auto sm:block rounded-xl">
-        <table className="w-full min-w-[780px] border-collapse text-left">
+        <table className="w-full min-w-[920px] border-collapse text-left">
           <thead>
             <tr className="border-b border-slate-200/80 dark:border-slate-800 text-[11.5px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              <th className="w-12 px-4 py-3.5">
+              <th className="w-12 px-5 py-3.5">
                 <input type="checkbox" className="h-4 w-4 accent-blue-600 rounded" checked={allSelected} onChange={onToggleAll} />
               </th>
-              <th className="px-4 py-3.5 min-w-[220px]">Name</th>
-              {mode === 'default' ? <th className="px-4 py-3.5 min-w-[140px]">Folder</th> : null}
-              {mode === 'shared' ? <th className="px-4 py-3.5 min-w-[140px]">Owner</th> : null}
-              {mode === 'recent' ? <th className="px-4 py-3.5 min-w-[160px] whitespace-nowrap">Last Opened</th> : null}
-              {mode === 'starred' ? <th className="px-4 py-3.5 min-w-[160px] whitespace-nowrap">Starred On</th> : null}
-              {mode === 'archived' ? <th className="px-4 py-3.5 min-w-[160px] whitespace-nowrap">Archived Date</th> : null}
+              <th className="px-5 py-3.5 min-w-[220px]">Name</th>
+              {mode === 'default' ? <th className="px-5 py-3.5 min-w-[160px]">Folder</th> : null}
+              {mode === 'shared' ? <th className="px-5 py-3.5 min-w-[150px]">Owner</th> : null}
+              {mode === 'recent' ? <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">Last Opened</th> : null}
+              {mode === 'starred' ? <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">Starred On</th> : null}
+              {mode === 'archived' ? <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">Archived Date</th> : null}
               {mode === 'archived' ? (
-                <th className="px-4 py-3.5 min-w-[160px]">Original Location</th>
+                <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">Original Location</th>
               ) : (
-                <th className="px-4 py-3.5 min-w-[160px] whitespace-nowrap">Last Modified</th>
+                <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">Last Modified</th>
               )}
-              <th className="px-4 py-3.5 min-w-[100px] whitespace-nowrap">Size</th>
-              <th className="px-4 py-3.5 min-w-[130px] whitespace-nowrap">Access</th>
-              <th className="px-4 py-3.5 w-24 text-right">Actions</th>
+              <th className="px-5 py-3.5 min-w-[110px] whitespace-nowrap">Size</th>
+              <th className="px-5 py-3.5 min-w-[170px] whitespace-nowrap">Access</th>
+              <th className="px-5 py-3.5 w-28 min-w-[110px] text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -146,7 +146,7 @@ export function FileTable({
                 )}
               >
                 {/* Checkbox */}
-                <td className="px-4 py-3.5">
+                <td className="px-5 py-3.5">
                   <input
                     type="checkbox"
                     className="h-4 w-4 accent-blue-600 rounded"
@@ -157,7 +157,7 @@ export function FileTable({
                 </td>
 
                 {/* File Name */}
-                <td className="px-4 py-3.5">
+                <td className="px-5 py-3.5">
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="shrink-0">
                       {mode === 'starred' ? <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" /> : <FileIcon kind={file.kind} />}
@@ -170,7 +170,7 @@ export function FileTable({
 
                 {/* Folder column */}
                 {mode === 'default' ? (
-                  <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400">
+                  <td className="px-5 py-3.5 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                     {file.folderName ? (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md">
                         <FolderOpen className="h-3 w-3 shrink-0" />
@@ -183,23 +183,23 @@ export function FileTable({
                 ) : null}
 
                 {/* Specific metadata columns */}
-                {mode === 'shared' ? <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300">{file.owner}</td> : null}
-                {mode === 'recent' ? <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap">{file.openedDate}</td> : null}
-                {mode === 'starred' ? <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap">{file.starredDate}</td> : null}
-                {mode === 'archived' ? <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap">{file.archivedDate}</td> : null}
+                {mode === 'shared' ? <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap text-xs">{file.owner}</td> : null}
+                {mode === 'recent' ? <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap text-xs font-semibold font-[tabular-nums]">{file.openedDate}</td> : null}
+                {mode === 'starred' ? <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap text-xs font-semibold font-[tabular-nums]">{file.starredDate}</td> : null}
+                {mode === 'archived' ? <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap text-xs font-semibold font-[tabular-nums]">{file.archivedDate}</td> : null}
 
                 {/* Date */}
-                <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap text-xs font-semibold font-[tabular-nums]">
                   {mode === 'archived' ? file.location : file.date}
                 </td>
 
                 {/* Size */}
-                <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300 font-semibold whitespace-nowrap text-xs font-[tabular-nums]">
                   {file.size}
                 </td>
 
                 {/* Access */}
-                <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300 whitespace-nowrap text-xs">
                   <div className="flex items-center gap-2">
                     <AvatarStack count={file.shared} />
                     <span className="truncate max-w-[120px]">{file.access}</span>
@@ -207,7 +207,7 @@ export function FileTable({
                 </td>
 
                 {/* Actions */}
-                <td className="px-4 py-3.5 text-right">
+                <td className="px-5 py-3.5 text-right">
                   <div className="flex items-center justify-end gap-1.5">
                     {/* Hover action buttons */}
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1.5">
