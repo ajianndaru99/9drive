@@ -73,11 +73,11 @@ export function FolderGrid({
           onClick={() => onFolderOpen?.(folder)}
           onContextMenu={(event) => onFolderMenu?.(event, folder)}
           onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }}
-          onDragEnter={(event) => { event.currentTarget.classList.add('bg-blue-50/50', 'border-blue-300') }}
-          onDragLeave={(event) => { event.currentTarget.classList.remove('bg-blue-50/50', 'border-blue-300') }}
+          onDragEnter={(event) => { event.currentTarget.classList.add('bg-blue-50/70', 'border-blue-400', 'dark:bg-blue-900/30', 'dark:border-blue-500') }}
+          onDragLeave={(event) => { event.currentTarget.classList.remove('bg-blue-50/70', 'border-blue-400', 'dark:bg-blue-900/30', 'dark:border-blue-500') }}
           onDrop={(event) => {
             event.preventDefault()
-            event.currentTarget.classList.remove('bg-blue-50/50', 'border-blue-300')
+            event.currentTarget.classList.remove('bg-blue-50/70', 'border-blue-400', 'dark:bg-blue-900/30', 'dark:border-blue-500')
             const fileId = event.dataTransfer.getData('text/plain')
             if (fileId && folder.id) onDropItem?.(fileId, folder.id)
           }}

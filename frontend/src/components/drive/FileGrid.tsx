@@ -107,22 +107,22 @@ export function FileGrid({
             )}
           >
             <div className="flex items-start justify-between gap-2">
-              <input type="checkbox" className={cn("shrink-0 accent-blue-600", cfg.checkbox)} checked={selected} onChange={() => onToggleFile?.(file)} onClick={(event) => event.stopPropagation()} />
-              <button className={cn("flex shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-white/80", cfg.menuBtn)} onClick={(event) => { event.stopPropagation(); onFileContextMenu?.(event, file) }} aria-label={`Open ${file.name} menu`}><MoreVertical className="h-4 w-4" /></button>
+              <input type="checkbox" className={cn("shrink-0 accent-blue-600 rounded", cfg.checkbox)} checked={selected} onChange={() => onToggleFile?.(file)} onClick={(event) => event.stopPropagation()} />
+              <button className={cn("flex shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors", cfg.menuBtn)} onClick={(event) => { event.stopPropagation(); onFileContextMenu?.(event, file) }} aria-label={`Open ${file.name} menu`}><MoreVertical className="h-4 w-4" /></button>
             </div>
 
             <div className="flex justify-center mt-2">
-              <div className={cn("flex items-center justify-center rounded-2xl bg-slate-100 text-slate-700", cfg.iconShell)}>
+              <div className={cn("flex items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300", cfg.iconShell)}>
                 <FileIcon kind={file.kind} className={cfg.icon} />
               </div>
             </div>
 
             <div className={cn("min-w-0 text-center", cfg.mtCard)}>
-              <h3 className={cn("font-extrabold text-slate-950 line-clamp-2", cfg.title)} title={file.name}>{file.name}</h3>
-              <p className={cfg.date}>{file.date}</p>
-              <div className={cn("flex flex-wrap justify-center font-semibold text-slate-600", cfg.tagsShell)}>
-                <span className={cn("rounded-full bg-slate-100", cfg.tag)}>{file.size}</span>
-                <span className={cn("max-w-full truncate rounded-full bg-slate-100", cfg.tag)}>{file.access}</span>
+              <h3 className={cn("font-extrabold text-slate-900 dark:text-slate-100 line-clamp-2", cfg.title)} title={file.name}>{file.name}</h3>
+              <p className={cn("text-slate-500 dark:text-slate-400", cfg.date)}>{file.date}</p>
+              <div className={cn("flex flex-wrap justify-center font-semibold text-slate-600 dark:text-slate-300 gap-1.5", cfg.tagsShell)}>
+                <span className={cn("rounded-full bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 text-xs", cfg.tag)}>{file.size}</span>
+                <span className={cn("max-w-full truncate rounded-full bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 text-xs", cfg.tag)}>{file.access}</span>
               </div>
             </div>
           </Card>
