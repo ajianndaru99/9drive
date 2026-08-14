@@ -180,27 +180,32 @@ function Sidebar({
       </div>
 
       <div ref={userMenuRef} className="relative">
-        <div className="flex items-center gap-2.5 border-y border-slate-100 dark:border-slate-800 py-3 my-3">
-          {!profileImageUrl || avatarError ? (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-sm border border-blue-400/20">
-              {(user?.name ?? user?.email ?? 'U').trim().charAt(0).toUpperCase()}
+        <div className="flex items-center gap-3 border-y border-slate-100 dark:border-slate-800 py-3 my-3">
+          <div className="relative shrink-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-purple-500 p-[2px] shadow-md shadow-indigo-500/20">
+              {!profileImageUrl || avatarError ? (
+                <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-slate-900 text-sm font-black text-white">
+                  {(user?.name ?? user?.email ?? 'U').trim().charAt(0).toUpperCase()}
+                </div>
+              ) : (
+                <img
+                  src={profileImageUrl}
+                  alt="User avatar"
+                  className="h-full w-full rounded-[10px] bg-white object-cover dark:bg-slate-900"
+                  onError={() => setAvatarError(true)}
+                />
+              )}
             </div>
-          ) : (
-            <img
-              src={profileImageUrl}
-              alt="User avatar"
-              className="h-8 w-8 rounded-full border border-slate-200 dark:border-slate-700 object-cover"
-              onError={() => setAvatarError(true)}
-            />
-          )}
+            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 shadow-sm dark:border-slate-900" />
+          </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold text-slate-900 dark:text-white leading-none">{user?.name ?? 'User'}</p>
-            <p className="truncate text-xs text-slate-500 dark:text-slate-400 mt-1">{user?.email ?? 'Loading...'}</p>
+            <p className="truncate text-sm font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">{user?.name ?? 'User'}</p>
+            <p className="truncate text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">{user?.email ?? 'Loading...'}</p>
           </div>
           <button
             type="button"
             onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
             aria-label="User account options"
           >
             <MoreVertical className="h-4 w-4" />

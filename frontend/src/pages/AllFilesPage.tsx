@@ -11,7 +11,7 @@ import { FileDetailsDrawer } from '@/components/drive/FileDetailsDrawer'
 import { FileGrid } from '@/components/drive/FileGrid'
 import { FileTable } from '@/components/drive/FileTable'
 import { FolderContextMenu } from '@/components/drive/FolderContextMenu'
-import { FolderGrid, type FolderSizeScale } from '@/components/drive/FolderGrid'
+import { FolderGrid } from '@/components/drive/FolderGrid'
 import { defaultFolderColor, defaultFolderIconUrl, folderColorOptions, folderIconOptions, normalizeFolderColor } from '@/components/drive/FolderVisual'
 import { PageHeader } from '@/components/drive/PageHeader'
 import { SortControl, type SortField, type SortDirection, type SortState, sortFilesList, sortFoldersList } from '@/components/drive/SortControl'
@@ -27,13 +27,6 @@ import { useDriveLayoutActions } from '@/layouts/DriveLayout'
 type BackendFile = { id: string; name: string; mimeType: string; sizeBytes: string; createdAt: string; folderId?: string | null; connectedAccountId?: string | null; connectedAccount?: { id?: string; email: string; provider: string }; folder?: { id: string; name: string } | null }
 type BackendFolder = { id: string; name: string; color: string; iconUrl?: string | null; parentId?: string | null; providerFolderId?: string | null; connectedAccountId?: string | null; connectedAccount?: { email: string; provider: string } | null; updatedAt: string }
 type ConnectedAccount = ConnectedAccountItem
-
-const sizeActiveClasses: Record<FolderSizeScale, string> = {
-  xs: 'bg-white text-slate-800 dark:bg-red-500/20 dark:text-red-300 dark:border-red-500/30 shadow-sm dark:shadow-none',
-  sm: 'bg-white text-slate-800 dark:bg-orange-500/20 dark:text-orange-300 dark:border-orange-500/30 shadow-sm dark:shadow-none',
-  md: 'bg-white text-slate-800 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/30 shadow-sm dark:shadow-none',
-  lg: 'bg-white text-slate-800 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30 shadow-sm dark:shadow-none'
-}
 
 type FileViewMode = 'list' | 'grid'
 
@@ -133,10 +126,7 @@ export function AllFilesPage() {
   const [inviteMessage, setInviteMessage] = useState('')
   const [inviting, setInviting] = useState(false)
   const previewVideoRef = useRef<HTMLVideoElement | null>(null)
-  const [folderSizeScale, setFolderSizeScale] = useState<FolderSizeScale>(() => {
-    const v = localStorage.getItem('9drive:folder-size')
-    return (v === 'xs' || v === 'sm' || v === 'md' || v === 'lg') ? v : 'md'
-  })
+  const folderSizeScale = 'md'
   const { setHeaderActions } = useDriveLayoutActions()
   const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([])
   const [selectedTargetAccountId, setSelectedTargetAccountId] = useState('')
@@ -261,11 +251,6 @@ export function AllFilesPage() {
   function handleSelectDriveAccount(accountId: string | null) {
     setSelectedDriveAccountId(accountId)
     loadAll(accountId).catch((error) => setMessage(error instanceof Error ? error.message : 'Failed to load files'))
-  }
-
-  function changeFolderSize(scale: FolderSizeScale) {
-    setFolderSizeScale(scale)
-    localStorage.setItem('9drive:folder-size', scale)
   }
 
   async function loadFiles(driveAccId = selectedDriveAccountId) {
@@ -798,32 +783,9 @@ export function AllFilesPage() {
   }, [activeFolderId])
 
   useEffect(() => {
-    const sizeLabels: FolderSizeScale[] = ['xs', 'sm', 'md', 'lg']
     setHeaderActions(
       <div className="flex items-center gap-2">
-        {/* Folder size scale picker */}
-        <div className="hidden sm:flex items-center gap-0.5 rounded-xl border border-slate-200 bg-slate-50 p-0.5">
-          {sizeLabels.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => changeFolderSize(s)}
-              className={[
-                'rounded-lg px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition-all border border-transparent',
-                folderSizeScale === s
-                  ? sizeActiveClasses[s]
-                  : 'text-slate-400 hover:text-slate-600',
-              ].join(' ')}
-              aria-label={`Folder size ${s}`}
-              aria-pressed={folderSizeScale === s}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-        {/* Divider */}
-        <div className="hidden sm:block h-6 w-px bg-slate-200" />
-        <Button size="sm" onClick={() => setUploadOpen(true)}>
+        <Button size="sm" onClick={() => setUploadOpen(true)} className="shadow-sm">
           <Upload className="h-3.5 w-3.5" />Upload
         </Button>
         <Button size="sm" variant="outline" onClick={() => setFolderOpen(true)}>
@@ -835,7 +797,7 @@ export function AllFilesPage() {
         </Button>
       </div>
     )
-  }, [syncingDrive, folderSizeScale])
+  }, [syncingDrive])
 
 
   const recentFolders = folders.slice(0, 4)
@@ -863,14 +825,9 @@ export function AllFilesPage() {
       <PageHeader title={activeFolder ? <span className="block min-w-0 truncate"><button className="text-blue-600 hover:underline" onClick={closeFolder}>All Files</button>{folderBreadcrumbs.map((folder, index) => <span key={folder.id}><span className="text-slate-400"> / </span>{index === folderBreadcrumbs.length - 1 ? <span>{folder.name}</span> : <button className="text-blue-600 hover:underline" onClick={() => folder.id && openFolderById(folder.id)}>{folder.name}</button>}</span>)}</span> : 'All Files'} />
       {/* Action buttons row — visible on mobile/tablet, hidden on desktop (desktop uses header slot) */}
       <div className="mt-4 flex flex-wrap items-center gap-2 lg:hidden">
-        <Button size="sm" onClick={() => setUploadOpen(true)}><Upload className="h-3.5 w-3.5" />Upload</Button>
+        <Button size="sm" onClick={() => setUploadOpen(true)} className="shadow-sm"><Upload className="h-3.5 w-3.5" />Upload</Button>
         <Button size="sm" variant="outline" onClick={() => setFolderOpen(true)}><FolderPlus className="h-3.5 w-3.5" />New Folder</Button>
         <Button size="sm" variant="outline" disabled={syncingDrive} onClick={() => syncGoogleDrive('full')}><RefreshCw className={syncingDrive ? 'h-3.5 w-3.5 animate-spin' : 'h-3.5 w-3.5'} />{syncingDrive ? 'Syncing...' : 'Sync'}</Button>
-        <div className="flex items-center gap-0.5 rounded-xl border border-slate-200 bg-slate-50 p-0.5">
-          {(['xs','sm','md','lg'] as FolderSizeScale[]).map((s) => (
-            <button key={s} type="button" onClick={() => changeFolderSize(s)} className={['rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wide transition-all border border-transparent', folderSizeScale === s ? sizeActiveClasses[s] : 'text-slate-400 hover:text-slate-600'].join(' ')} aria-label={`Folder size ${s}`}>{s}</button>
-          ))}
-        </div>
       </div>
       {message ? <p className="mt-3 rounded-xl bg-blue-50 p-3 text-sm text-blue-700">{message}</p> : null}
       

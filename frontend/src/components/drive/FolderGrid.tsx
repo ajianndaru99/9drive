@@ -32,11 +32,11 @@ const scaleConfig: Record<FolderSizeScale, {
     iconMt: '',
   },
   md: {
-    grid: 'grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5',
-    card: 'min-h-36 p-4 sm:min-h-48 sm:p-6',
-    icon: 'h-14 w-14 sm:h-20 sm:w-20',
-    title: 'text-sm mt-3 sm:mt-5 sm:text-lg',
-    sub: 'text-xs mt-1 sm:text-sm',
+    grid: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4.5',
+    card: 'min-h-32 p-3.5 sm:min-h-40 sm:p-5',
+    icon: 'h-12 w-12 sm:h-16 sm:w-16',
+    title: 'text-xs mt-2.5 sm:mt-3.5 sm:text-sm font-extrabold',
+    sub: 'text-[10px] mt-0.5 sm:text-xs',
     iconMt: '',
   },
   lg: {

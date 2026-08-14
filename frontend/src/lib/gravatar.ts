@@ -1,11 +1,8 @@
-// Generates a fun, unique avatar URL for a user based on their email.
-// Uses DiceBear "bottts" style (cute robots) as the default when no Gravatar is set.
-// Falls back to a random avatar when no email is provided.
+// Generates a modern, stylish avatar URL for a user based on their email or name.
+// Uses DiceBear "lorelei" style (modern illustrated characters) as the default with vibrant pastel backgrounds.
 export async function getGravatarUrl(email: string | undefined, size: number) {
   const normalized = email?.trim().toLowerCase()
-
-  // Hash the email for Gravatar lookup + as DiceBear seed
-  const seed = normalized ?? 'default-user'
+  const seed = normalized ?? 'user-avatar'
   let hash = ''
 
   if (typeof crypto !== 'undefined' && crypto.subtle) {
@@ -19,27 +16,26 @@ export async function getGravatarUrl(email: string | undefined, size: number) {
     hash = simpleHash(seed)
   }
 
-  // Try Gravatar first; fallback to DiceBear bottts (cute robots)
-  // d=404 means Gravatar returns 404 if no image → we catch and fall through to DiceBear
+  // Try Gravatar first if valid email; fallback to DiceBear lorelei
   if (normalized && hash.length === 64) {
     const gravatarUrl = `https://www.gravatar.com/avatar/${hash}?s=${size}&d=404`
     try {
       const res = await fetch(gravatarUrl, { method: 'HEAD' })
       if (res.ok) return gravatarUrl
     } catch {
-      // Network error → fall through
+      // Fall through to stylish DiceBear
     }
   }
 
-  // DiceBear bottts — cute, colorful robot avatars
-  return `https://api.dicebear.com/8.x/bottts/svg?seed=${encodeURIComponent(hash)}&size=${size}&backgroundColor=b6e3f4,c0aede,d1f4cc,ffdfbf,ffd5dc`
+  // DiceBear lorelei — modern, attractive character avatar
+  return `https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(seed)}&size=${size}&backgroundColor=b6e3f4,c0aede,d1f4cc,ffdfbf,ffd5dc,e0e7ff,fce7f3&radius=50`
 }
 
 function simpleHash(str: string): string {
   let hash = 0
   for (let i = 0; i < str.length; i++) {
     hash = (hash << 5) - hash + str.charCodeAt(i)
-    hash |= 0 // Convert to 32bit integer
+    hash |= 0
   }
   return Math.abs(hash).toString(36)
 }
