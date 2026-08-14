@@ -68,29 +68,29 @@ function SystemInfoDropdown({ storage }: { storage: any }) {
   const activeS3 = storage?.accounts?.filter((a: any) => a.provider === 's3' && a.status === 'connected') ?? []
 
   return (
-    <div className="absolute right-0 top-12 z-50 w-[min(calc(100vw-2rem),22rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/15">
-      <div className="border-b border-slate-200 px-4 py-3 bg-slate-50/50">
-        <p className="text-sm font-extrabold text-slate-950">Workspace Status & Info</p>
-        <p className="text-xs text-slate-500">Overview of your connections & guidelines</p>
+    <div className="absolute right-0 top-12 z-50 w-[min(calc(100vw-2rem),22rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f172a] shadow-2xl shadow-slate-950/25">
+      <div className="border-b border-slate-200 dark:border-slate-800 px-4 py-3 bg-slate-50 dark:bg-slate-800/80">
+        <p className="text-sm font-extrabold text-slate-950 dark:text-white">Workspace Status & Info</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Overview of your connections & guidelines</p>
       </div>
-      <div className="max-h-96 overflow-y-auto p-4 space-y-4">
+      <div className="max-h-96 overflow-y-auto p-4 space-y-4 text-slate-800 dark:text-slate-200">
         {/* Connection status */}
         <div>
-          <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> Connection Status</h4>
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> Connection Status</h4>
           <div className="mt-2 space-y-2">
-            <div className="flex items-center justify-between text-xs rounded-xl bg-slate-50 p-2.5 border border-slate-100">
-              <span className="font-semibold text-slate-700">Google Drive Accounts</span>
-              <span className={activeGoogle.length > 0 ? "text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-100" : "text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-bold border border-amber-100"}>
+            <div className="flex items-center justify-between text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 p-2.5 border border-slate-100 dark:border-slate-800">
+              <span className="font-semibold text-slate-700 dark:text-slate-200">Google Drive Accounts</span>
+              <span className={activeGoogle.length > 0 ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold border border-emerald-100 dark:border-emerald-900/40" : "text-amber-600 bg-amber-50 dark:bg-amber-950/50 dark:text-amber-400 px-2 py-0.5 rounded-full font-bold border border-amber-100 dark:border-amber-900/40"}>
                 {activeGoogle.length} Connected
               </span>
             </div>
             {activeGoogle.map((acc: any) => (
-              <p key={acc.id} className="text-[11px] text-slate-500 truncate px-2.5">— {acc.email}</p>
+              <p key={acc.id} className="text-[11px] text-slate-500 dark:text-slate-400 truncate px-2.5">— {acc.email}</p>
             ))}
             {activeS3.length > 0 && (
-              <div className="flex items-center justify-between text-xs rounded-xl bg-slate-50 p-2.5 border border-slate-100 mt-1">
-                <span className="font-semibold text-slate-700">S3 Buckets</span>
-                <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-bold border border-blue-100">
+              <div className="flex items-center justify-between text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 p-2.5 border border-slate-100 dark:border-slate-800 mt-1">
+                <span className="font-semibold text-slate-700 dark:text-slate-200">S3 Buckets</span>
+                <span className="text-blue-600 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-400 px-2 py-0.5 rounded-full font-bold border border-blue-100 dark:border-blue-900/40">
                   {activeS3.length} Connected
                 </span>
               </div>
@@ -100,8 +100,8 @@ function SystemInfoDropdown({ storage }: { storage: any }) {
 
         {/* Database & engine status */}
         <div>
-          <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5"><HardDrive className="h-3.5 w-3.5 text-blue-500" /> Storage Gateway</h4>
-          <div className="mt-2 text-xs text-slate-600 space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><HardDrive className="h-3.5 w-3.5 text-blue-500" /> Storage Gateway</h4>
+          <div className="mt-2 text-xs text-slate-600 dark:text-slate-300 space-y-1 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
             <p>• <b>Sync Engine:</b> Full Native Drive Synchronization</p>
             <p>• <b>Upload Mode:</b> Direct Stream with Quota Routing</p>
             <p>• <b>Max Upload Size:</b> Up to 5 GB per stream</p>
@@ -110,8 +110,8 @@ function SystemInfoDropdown({ storage }: { storage: any }) {
 
         {/* Tips & Guides */}
         <div>
-          <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5"><Info className="h-3.5 w-3.5 text-indigo-500" /> Usage Tips</h4>
-          <ul className="mt-2 text-[11px] text-slate-500 list-disc list-inside space-y-1 pl-1">
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><Info className="h-3.5 w-3.5 text-indigo-500" /> Usage Tips</h4>
+          <ul className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 list-disc list-inside space-y-1 pl-1">
             <li>Files in your connected Google Drives and S3 are synchronized in real-time.</li>
             <li>Star important files or drag & drop files directly into folders.</li>
             <li>Use the Sync button to refresh any recent changes made directly on Drive.</li>
@@ -209,10 +209,10 @@ function Sidebar({
 
         {/* Interactive User Avatar 3-Dots Menu Popover */}
         {userMenuOpen && (
-          <div className="absolute left-0 right-0 top-16 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-950/20 backdrop-blur-2xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
-            <div className="border-b border-slate-100 dark:border-slate-800 px-3 py-2.5 bg-slate-50/50 dark:bg-slate-800/40 rounded-xl mb-1.5">
+          <div className="absolute left-0 right-0 top-16 z-[100] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-950/30 dark:border-slate-800 dark:bg-[#0c1220] user-menu-popover animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="border-b border-slate-100 dark:border-slate-800/80 px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl mb-1.5">
               <p className="truncate text-xs font-bold text-slate-900 dark:text-white">{user?.name ?? 'User Account'}</p>
-              <p className="truncate text-[11px] text-slate-400">{user?.email}</p>
+              <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{user?.email}</p>
             </div>
 
             <div className="space-y-0.5">
@@ -225,7 +225,7 @@ function Sidebar({
                 }}
                 className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <Settings className="h-3.5 w-3.5 text-blue-600" />
+                <Settings className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                 <span>Account & Drive Settings</span>
               </button>
 
@@ -238,7 +238,7 @@ function Sidebar({
                 }}
                 className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <Gauge className="h-3.5 w-3.5 text-indigo-600" />
+                <Gauge className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>Storage Quota Tracker</span>
               </button>
 
@@ -251,7 +251,7 @@ function Sidebar({
                 }}
                 className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <History className="h-3.5 w-3.5 text-emerald-600" />
+                <History className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Activity & Audit Log</span>
               </button>
 
@@ -264,7 +264,7 @@ function Sidebar({
                 }}
                 className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <Braces className="h-3.5 w-3.5 text-violet-600" />
+                <Braces className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
                 <span>API Keys & Webhooks</span>
               </button>
 
@@ -291,7 +291,7 @@ function Sidebar({
                   setUserMenuOpen(false)
                   onLogout()
                 }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 dark:text-red-400 transition-colors"
               >
                 <LogOut className="h-3.5 w-3.5" />
                 <span>Log Out</span>
@@ -580,13 +580,13 @@ export function DriveLayout() {
   }, [])
 
   return (
-    <main className="min-h-screen w-full overflow-x-hidden bg-white">
-      <div className="flex min-h-screen w-full flex-col bg-white lg:h-screen lg:overflow-hidden lg:flex-row">
+    <main className="min-h-screen w-full overflow-x-hidden bg-slate-50 dark:bg-[#070b14] text-slate-900 dark:text-slate-100 transition-colors duration-300">
+      <div className="flex min-h-screen w-full flex-col lg:h-screen lg:overflow-hidden lg:flex-row">
         <div className="hidden lg:block lg:h-screen lg:shrink-0">
           <Sidebar user={user} storage={storage} breakdown={breakdown} onLogout={logout} theme={theme} onToggleTheme={toggleTheme} />
         </div>
         <div className={cn('fixed inset-0 z-40 bg-slate-950/40 transition-opacity lg:hidden', sidebarOpen ? 'opacity-100' : 'pointer-events-none opacity-0')} onClick={() => setSidebarOpen(false)} />
-        <div className={cn('fixed inset-y-0 left-0 z-50 transform bg-white shadow-2xl transition-transform duration-300 ease-out lg:hidden', sidebarOpen ? 'translate-x-0' : '-translate-x-full')}>
+        <div className={cn('fixed inset-y-0 left-0 z-50 transform bg-white dark:bg-[#0c111e] shadow-2xl transition-transform duration-300 ease-out lg:hidden', sidebarOpen ? 'translate-x-0' : '-translate-x-full')}>
           <div className="absolute right-4 top-4 z-10">
             <Button variant="outline" size="icon" aria-label="Close sidebar" onClick={() => setSidebarOpen(false)}>
               <X className="h-5 w-5" />
@@ -621,22 +621,22 @@ export function DriveLayout() {
             </div>
             <div ref={searchContainerRef} className="relative w-full min-w-0 flex-1 lg:max-w-sm xl:max-w-xl">
               <form onSubmit={searchFiles} className="relative w-full">
-                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-                <Input value={searchValue} onFocus={() => { if (searchValue.trim().length >= 2) setLiveSearchOpen(true) }} onChange={(event) => setSearchValue(event.target.value)} placeholder="Search Documents, Folders, or Files..." className="pl-11 pr-12" />
-                <button type="button" onClick={() => setFiltersOpen(!filtersOpen)} className={cn("absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900 transition-colors", filtersOpen && "text-blue-600 hover:text-blue-700")} aria-label="Search filters"><SlidersHorizontal className="h-5 w-5" /></button>
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                <Input value={searchValue} onFocus={() => { if (searchValue.trim().length >= 2) setLiveSearchOpen(true) }} onChange={(event) => setSearchValue(event.target.value)} placeholder="Search Documents, Folders, or Files..." className="pl-11 pr-12 rounded-2xl border-slate-200/80 bg-white/90 dark:border-slate-800 dark:bg-[#0f172a] shadow-sm text-sm focus:border-blue-500" />
+                <button type="button" onClick={() => setFiltersOpen(!filtersOpen)} className={cn("absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 transition-colors", filtersOpen && "text-blue-600 hover:text-blue-700 dark:text-blue-400")} aria-label="Search filters"><SlidersHorizontal className="h-5 w-5" /></button>
               </form>
 
               {/* Live search dropdown popover */}
               {liveSearchOpen && (liveResults.folders.length > 0 || liveResults.files.length > 0 || liveLoading) && (
-                <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
-                  <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs font-bold text-slate-500">
+                <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f172a] shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/80 flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
                     <span>Instant Search Suggestions</span>
-                    {liveLoading && <span className="text-blue-600 animate-pulse">Searching...</span>}
+                    {liveLoading && <span className="text-blue-600 dark:text-blue-400 animate-pulse">Searching...</span>}
                   </div>
                   <div className="max-h-80 overflow-y-auto p-2 space-y-1">
                     {liveResults.folders.length > 0 && (
                       <div>
-                        <p className="text-[10px] uppercase font-bold text-slate-400 px-3 py-1">Folders</p>
+                        <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 px-3 py-1">Folders</p>
                         {liveResults.folders.map((folder) => (
                           <button
                             key={folder.id}
@@ -645,17 +645,17 @@ export function DriveLayout() {
                               setLiveSearchOpen(false)
                               navigate(`/all-files?folderId=${folder.id}`)
                             }}
-                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-100 transition-colors"
+                            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors text-slate-800 dark:text-slate-200"
                           >
-                            <Folder className="h-4 w-4 text-blue-600 shrink-0" />
-                            <span className="truncate font-semibold text-slate-800">{folder.name}</span>
+                            <Folder className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                            <span className="truncate font-semibold">{folder.name}</span>
                           </button>
                         ))}
                       </div>
                     )}
                     {liveResults.files.length > 0 && (
                       <div className="mt-1">
-                        <p className="text-[10px] uppercase font-bold text-slate-400 px-3 py-1">Files</p>
+                        <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 px-3 py-1">Files</p>
                         {liveResults.files.map((file) => (
                           <button
                             key={file.id}
@@ -664,20 +664,20 @@ export function DriveLayout() {
                               setLiveSearchOpen(false)
                               navigate(`/all-files?q=${encodeURIComponent(file.name)}`)
                             }}
-                            className="flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-100 transition-colors"
+                            className="flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors text-slate-800 dark:text-slate-200"
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <FileText className="h-4 w-4 text-slate-500 shrink-0" />
-                              <span className="truncate font-semibold text-slate-800">{file.name}</span>
+                              <FileText className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                              <span className="truncate font-semibold">{file.name}</span>
                             </div>
-                            <span className="text-xs text-slate-400 shrink-0">{formatBytes(file.sizeBytes)}</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">{formatBytes(file.sizeBytes)}</span>
                           </button>
                         ))}
                       </div>
                     )}
                   </div>
-                  <div className="p-2 border-t border-slate-100 bg-slate-50 flex justify-end">
-                    <button type="button" onClick={applyFilters} className="text-xs font-bold text-blue-600 hover:text-blue-700 px-2 py-1">
+                  <div className="p-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-end">
+                    <button type="button" onClick={applyFilters} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline px-2 py-1">
                       Press Enter to see all results →
                     </button>
                   </div>
@@ -685,17 +685,17 @@ export function DriveLayout() {
               )}
 
               {filtersOpen && (
-                <div className="absolute left-0 right-0 top-12 z-50 rounded-2xl border border-slate-200 bg-white/95 p-5 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <span className="text-sm font-extrabold text-slate-950">Advanced Search Filters</span>
-                    <button type="button" onClick={clearFilters} className="text-xs font-bold text-blue-600 hover:text-blue-700">Clear All</button>
+                <div className="absolute left-0 right-0 top-12 z-50 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f172a] p-5 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <span className="text-sm font-extrabold text-slate-950 dark:text-white">Advanced Search Filters</span>
+                    <button type="button" onClick={clearFilters} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">Clear All</button>
                   </div>
 
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     {/* File Kind */}
                     <div>
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">File Type</label>
-                      <select value={filterKind} onChange={(e) => setFilterKind(e.target.value)} className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-blue-500 focus:bg-white focus:outline-none">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">File Type</label>
+                      <select value={filterKind} onChange={(e) => setFilterKind(e.target.value)} className="mt-1 block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none">
                         <option value="">All Types</option>
                         <option value="image">Image</option>
                         <option value="video">Video</option>
@@ -707,8 +707,8 @@ export function DriveLayout() {
 
                     {/* Connected Account */}
                     <div>
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Connected Account</label>
-                      <select value={filterAccountId} onChange={(e) => setFilterAccountId(e.target.value)} className="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-blue-500 focus:bg-white focus:outline-none">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Connected Account</label>
+                      <select value={filterAccountId} onChange={(e) => setFilterAccountId(e.target.value)} className="mt-1 block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none">
                         <option value="">All Accounts</option>
                         {accounts.map((acc) => (
                           <option key={acc.id} value={acc.id}>{acc.email} ({acc.provider})</option>
@@ -718,26 +718,26 @@ export function DriveLayout() {
 
                     {/* Size range */}
                     <div>
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Size Range (MB)</label>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Size Range (MB)</label>
                       <div className="mt-1 flex items-center gap-2">
-                        <input type="number" placeholder="Min" value={filterMinSize} onChange={(e) => setFilterMinSize(e.target.value)} className="block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-blue-500 focus:bg-white focus:outline-none" />
+                        <input type="number" placeholder="Min" value={filterMinSize} onChange={(e) => setFilterMinSize(e.target.value)} className="block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none" />
                         <span className="text-slate-400 text-xs font-semibold">to</span>
-                        <input type="number" placeholder="Max" value={filterMaxSize} onChange={(e) => setFilterMaxSize(e.target.value)} className="block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-blue-500 focus:bg-white focus:outline-none" />
+                        <input type="number" placeholder="Max" value={filterMaxSize} onChange={(e) => setFilterMaxSize(e.target.value)} className="block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none" />
                       </div>
                     </div>
 
                     {/* Date range */}
                     <div>
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Date Range</label>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date Range</label>
                       <div className="mt-1 flex items-center gap-2">
-                        <input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className="block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-blue-500 focus:bg-white focus:outline-none" />
+                        <input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className="block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none" />
                         <span className="text-slate-400 text-xs font-semibold">to</span>
-                        <input type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} className="block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-blue-500 focus:bg-white focus:outline-none" />
+                        <input type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} className="block w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none" />
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4">
+                  <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4">
                     <Button variant="outline" size="sm" type="button" onClick={() => setFiltersOpen(false)}>Cancel</Button>
                     <Button variant="default" size="sm" type="button" onClick={applyFilters}>Apply Filters</Button>
                   </div>
