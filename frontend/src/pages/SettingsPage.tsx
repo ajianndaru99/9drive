@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { DummyModal } from '@/components/drive/DummyModal'
 import { PageHeader } from '@/components/drive/PageHeader'
 import { apiFetch, formatBytes, API_URL } from '@/lib/api'
-import { getGravatarUrl } from '@/lib/gravatar'
+import { UserInitialsAvatar } from '@/components/drive/UserInitialsAvatar'
 import { getStoredUser, getAccessToken, clearAuthSession } from '@/lib/auth'
 
 type ConnectedAccount = { id: string; provider: string; email: string; displayName?: string | null; status: string; storageAccount?: { totalBytes: string | null; usedBytes: string; availableBytes: string | null; lastSyncedAt: string | null } | null }
@@ -37,8 +37,6 @@ export function SettingsPage() {
   const [syncingAccountId, setSyncingAccountId] = useState<string | null>(null)
   const [disconnectingAccountId, setDisconnectingAccountId] = useState<string | null>(null)
   const [accountToDisconnect, setAccountToDisconnect] = useState<ConnectedAccount | null>(null)
-  const [profileImageUrl, setProfileImageUrl] = useState('')
-  const [avatarError, setAvatarError] = useState(false)
   const [selectedAccountId, setSelectedAccountId] = useState('')
   const [updatingSystem, setUpdatingSystem] = useState(false)
   const [updateModalOpen, setUpdateModalOpen] = useState(false)
@@ -260,11 +258,6 @@ export function SettingsPage() {
   }, [])
 
   useEffect(() => {
-    setAvatarError(false)
-    getGravatarUrl(user?.email, 96).then(setProfileImageUrl).catch(() => setProfileImageUrl(''))
-  }, [user?.email])
-
-  useEffect(() => {
     if (accounts.length === 0) {
       setSelectedAccountId('')
       return
@@ -381,19 +374,13 @@ export function SettingsPage() {
       <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_280px]">
         <div className="grid gap-4">
           <Card className="p-4">
-            <div className="flex items-center gap-3.5">
-              {!profileImageUrl || avatarError ? (
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold text-white shadow-sm border border-blue-400/20 sm:h-14 sm:w-14">
-                  {(user?.name ?? user?.email ?? 'U').trim().charAt(0).toUpperCase()}
-                </div>
-              ) : (
-                <img
-                  src={profileImageUrl}
-                  alt="User avatar"
-                  className="h-12 w-12 rounded-xl object-cover sm:h-14 sm:w-14"
-                  onError={() => setAvatarError(true)}
-                />
-              )}
+            <div className="flex items-center gap-4">
+              <UserInitialsAvatar
+                name={user?.name}
+                email={user?.email}
+                size="xl"
+                showOnlineBadge
+              />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-bold">{user?.name ?? 'User'}</h2>

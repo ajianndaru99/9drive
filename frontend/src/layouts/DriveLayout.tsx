@@ -35,7 +35,7 @@ import { Input } from '@/components/ui/input'
 import { apiFetch, formatBytes } from '@/lib/api'
 import { useUpload } from '@/context/UploadContext'
 import { clearAuthSession, getStoredUser, updateStoredUser, type AuthUser } from '@/lib/auth'
-import { getGravatarUrl } from '@/lib/gravatar'
+import { UserInitialsAvatar } from '@/components/drive/UserInitialsAvatar'
 import { cn } from '@/lib/utils'
 
 const menu: Array<{ label: string; icon: any; href: string; disabled?: boolean }> = [
@@ -143,8 +143,6 @@ function Sidebar({
   const used = Number(storage?.usedBytes ?? 0)
   const total = Number(storage?.totalBytes ?? 0)
   const progress = total > 0 ? Math.min(100, (used / total) * 100) : 0
-  const [profileImageUrl, setProfileImageUrl] = useState('')
-  const [avatarError, setAvatarError] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
 
@@ -154,11 +152,6 @@ function Sidebar({
     ['Document', formatBytes(breakdown.document), 'bg-cyan-400'],
     ['Free Storage', formatBytes(storage?.availableBytes), 'bg-orange-500'],
   ]
-
-  useEffect(() => {
-    setAvatarError(false)
-    getGravatarUrl(user?.email, 64).then(setProfileImageUrl).catch(() => setProfileImageUrl(''))
-  }, [user?.email])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -181,23 +174,12 @@ function Sidebar({
 
       <div ref={userMenuRef} className="relative">
         <div className="flex items-center gap-3 border-y border-slate-100 dark:border-slate-800 py-3 my-3">
-          <div className="relative shrink-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-purple-500 p-[2px] shadow-md shadow-indigo-500/20">
-              {!profileImageUrl || avatarError ? (
-                <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-slate-900 text-sm font-black text-white">
-                  {(user?.name ?? user?.email ?? 'U').trim().charAt(0).toUpperCase()}
-                </div>
-              ) : (
-                <img
-                  src={profileImageUrl}
-                  alt="User avatar"
-                  className="h-full w-full rounded-[10px] bg-white object-cover dark:bg-slate-900"
-                  onError={() => setAvatarError(true)}
-                />
-              )}
-            </div>
-            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 shadow-sm dark:border-slate-900" />
-          </div>
+          <UserInitialsAvatar
+            name={user?.name}
+            email={user?.email}
+            size="md"
+            showOnlineBadge
+          />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">{user?.name ?? 'User'}</p>
             <p className="truncate text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">{user?.email ?? 'Loading...'}</p>
