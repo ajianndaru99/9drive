@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FileText, Folder, Star, FolderOpen } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { FileTable } from '@/components/drive/FileTable'
 import { MetricCard } from '@/components/drive/MetricCard'
 import { PageHeader } from '@/components/drive/PageHeader'
+import { SortControl, type SortField, type SortState, sortFilesList } from '@/components/drive/SortControl'
 import { Button } from '@/components/ui/button'
 import { DummyModal } from '@/components/drive/DummyModal'
 import { apiFetch, formatBytes, formatDate } from '@/lib/api'
@@ -45,25 +46,33 @@ export function StarredPage() {
   const [activeFile, setActiveFile] = useState<FileItem | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState('')
-  const [message, setMessage] = useState('')
+  const [sortState, setSortState] = useState<SortState>({ field: 'date', direction: 'desc' })
+
+  function handleHeaderSort(field: SortField) {
+    setSortState((prev) => ({
+      field,
+      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
+    }))
+  }
+
+  const sortedFiles = useMemo(() => {
+    return sortFilesList(files, sortState.field, sortState.direction)
+  }, [files, sortState])
 
   async function loadStarred() {
     setLoading(true)
     try {
-      const [fileData, folderData] = await Promise.all([
-        apiFetch<{ files: BackendFile[] }>('/files/starred'),
-        apiFetch<{ folders: BackendFolder[] }>('/folders/starred')
-      ])
-      setFiles(fileData.files.map(mapFile))
-      setFolders(folderData.folders.map((f) => ({
+      const data = await apiFetch<{ files: BackendFile[]; folders: BackendFolder[] }>('/files/starred')
+      setFiles((data.files ?? []).map(mapFile))
+      setFolders((data.folders ?? []).map((f) => ({
         id: f.id,
         name: f.name,
         color: f.color,
         iconUrl: f.iconUrl,
-        updated: `Starred ${formatDate(f.updatedAt)}`
+        updated: `Updated ${formatDate(f.updatedAt)}`
       })))
-    } catch (err: any) {
-      setMessage(err.message || 'Failed to load starred items')
+    } catch (err) {
+      console.error('Failed to load starred items', err)
     } finally {
       setLoading(false)
     }
@@ -73,18 +82,6 @@ export function StarredPage() {
     loadStarred()
   }, [])
 
-  async function unstarFile(file: FileItem) {
-    if (!file.id) return
-    try {
-      await apiFetch(`/files/${file.id}/star`, { method: 'PATCH' })
-      setFiles((prev) => prev.filter((f) => f.id !== file.id))
-      setMessage(`Removed "${file.name}" from starred items.`)
-      setTimeout(() => setMessage(''), 3000)
-    } catch (err: any) {
-      setMessage(err.message || 'Failed to update star')
-    }
-  }
-
   async function openPreview(file: FileItem) {
     if (!file.id) return
     setActiveFile(file)
@@ -92,21 +89,33 @@ export function StarredPage() {
       const data = await apiFetch<{ path: string }>(`/files/${file.id}/preview-token`, { method: 'POST' })
       setPreviewUrl(data.path)
       setPreviewOpen(true)
-    } catch (err: any) {
-      setMessage(err.message || 'Failed to load preview')
+    } catch (err) {
+      console.error('Failed to open preview', err)
+    }
+  }
+
+  async function unstarFile(file: FileItem) {
+    if (!file.id) return
+    try {
+      await apiFetch(`/files/${file.id}/star`, { method: 'POST' })
+      setFiles((prev) => prev.filter((f) => f.id !== file.id))
+      setPreviewOpen(false)
+    } catch (err) {
+      console.error('Failed to unstar file', err)
     }
   }
 
   return (
     <>
-      <PageHeader title="Starred" description="Pinned files and folders for fast, instant access." />
-
-      {message ? <p className="mt-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-700">{message}</p> : null}
+      <PageHeader
+        title="Starred"
+        description="Important files and folders you've starred for quick access."
+      />
 
       <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <MetricCard label="Starred Files" value={String(files.length)} icon={Star} />
+        <MetricCard label="Starred Files" value={String(files.length)} icon={FileText} />
         <MetricCard label="Starred Folders" value={String(folders.length)} icon={Folder} />
-        <MetricCard label="Total Starred Size" value={formatBytes(files.reduce((acc, f) => acc + BigInt(f.sizeBytes ?? '0'), 0n))} icon={FileText} />
+        <MetricCard label="Total Starred Size" value={formatBytes(files.reduce((acc, f) => acc + BigInt(f.sizeBytes ?? '0'), 0n))} icon={Star} />
       </div>
 
       {folders.length > 0 && (
@@ -133,17 +142,23 @@ export function StarredPage() {
       )}
 
       <div className="mt-8">
-        <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-500">Starred Files</h2>
+        <div className="flex items-center justify-between gap-4 mb-3">
+          <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Starred Files</h2>
+          <SortControl sort={sortState} onSortChange={setSortState} />
+        </div>
         {files.length === 0 && !loading ? (
-          <Card className="mt-3 p-8 text-center bg-slate-50 border border-dashed border-slate-200">
+          <Card className="mt-3 p-8 text-center bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800">
             <Star className="mx-auto h-8 w-8 text-slate-400" />
-            <p className="mt-2 text-sm font-bold text-slate-700">No starred files yet</p>
-            <p className="text-xs text-slate-500">Right click or tap the star icon on any file in All Files to pin it here.</p>
+            <p className="mt-2 text-sm font-bold text-slate-700 dark:text-slate-200">No starred files yet</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Right click or tap the star icon on any file in All Files to pin it here.</p>
           </Card>
         ) : (
           <FileTable
-            files={files}
+            files={sortedFiles}
             mode="starred"
+            sortField={sortState.field}
+            sortDirection={sortState.direction}
+            onSort={handleHeaderSort}
             onFileContextMenu={(_e, file) => openPreview(file)}
           />
         )}

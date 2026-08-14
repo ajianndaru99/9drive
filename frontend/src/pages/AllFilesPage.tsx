@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent, type FormEvent, type MouseEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent, type MouseEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Archive, CheckCircle, ClipboardPaste, Download, FolderInput, FolderPlus, LayoutGrid, List, RefreshCw, Star, Trash2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import { FolderContextMenu } from '@/components/drive/FolderContextMenu'
 import { FolderGrid, type FolderSizeScale } from '@/components/drive/FolderGrid'
 import { defaultFolderColor, defaultFolderIconUrl, folderColorOptions, folderIconOptions, normalizeFolderColor } from '@/components/drive/FolderVisual'
 import { PageHeader } from '@/components/drive/PageHeader'
+import { SortControl, type SortField, type SortDirection, type SortState, sortFilesList, sortFoldersList } from '@/components/drive/SortControl'
 import { Input } from '@/components/ui/input'
 import { API_URL, apiFetch, formatBytes, formatDate } from '@/lib/api'
 import { getAccessToken } from '@/lib/auth'
@@ -136,6 +137,36 @@ export function AllFilesPage() {
   const { setHeaderActions } = useDriveLayoutActions()
   const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([])
   const [selectedTargetAccountId, setSelectedTargetAccountId] = useState('')
+
+  const [sortState, setSortState] = useState<SortState>(() => {
+    const savedField = localStorage.getItem('9drive:sort-field') as SortField | null
+    const savedDir = localStorage.getItem('9drive:sort-dir') as SortDirection | null
+    return {
+      field: savedField === 'name' || savedField === 'folder' || savedField === 'date' || savedField === 'size' ? savedField : 'date',
+      direction: savedDir === 'asc' || savedDir === 'desc' ? savedDir : 'desc'
+    }
+  })
+
+  function changeSort(next: SortState) {
+    setSortState(next)
+    localStorage.setItem('9drive:sort-field', next.field)
+    localStorage.setItem('9drive:sort-dir', next.direction)
+  }
+
+  function handleHeaderSort(field: SortField) {
+    changeSort({
+      field,
+      direction: sortState.field === field && sortState.direction === 'asc' ? 'desc' : 'asc'
+    })
+  }
+
+  const sortedFiles = useMemo(() => {
+    return sortFilesList(files, sortState.field, sortState.direction)
+  }, [files, sortState])
+
+  const sortedFolders = useMemo(() => {
+    return sortFoldersList(folders, sortState.field, sortState.direction)
+  }, [folders, sortState])
 
   function changeFolderSize(scale: FolderSizeScale) {
     setFolderSizeScale(scale)
@@ -730,18 +761,42 @@ export function AllFilesPage() {
         </div>
       </div>
       {message ? <p className="mt-3 rounded-xl bg-blue-50 p-3 text-sm text-blue-700">{message}</p> : null}
-      {!activeFolder && (recentFolders.length > 0 ? <FolderGrid items={recentFolders} mobileTwoColumns sizeScale={folderSizeScale} onFolderMenu={openFolderMenu} onFolderOpen={openFolder} onDropItem={handleDropItem} /> : <p className="mt-4 rounded-xl bg-slate-50 p-5 text-sm text-slate-500">No folders yet. Click New Folder to organize uploads.</p>)}
+      {!activeFolder && (recentFolders.length > 0 ? <FolderGrid items={sortedFolders.slice(0, 4)} mobileTwoColumns sizeScale={folderSizeScale} onFolderMenu={openFolderMenu} onFolderOpen={openFolder} onDropItem={handleDropItem} /> : <p className="mt-4 rounded-xl bg-slate-50 dark:bg-slate-850 p-5 text-sm text-slate-500 dark:text-slate-400 border border-slate-100 dark:border-slate-800">No folders yet. Click New Folder to organize uploads.</p>)}
       {!activeFolder && moreFolders.length > 0 ? <>
-        <h2 className="mt-4 font-extrabold text-slate-700">More Folders</h2>
-        <FolderGrid items={moreFolders} sizeScale={folderSizeScale} onFolderMenu={openFolderMenu} onFolderOpen={openFolder} onDropItem={handleDropItem} />
+        <h2 className="mt-4 font-extrabold text-slate-700 dark:text-slate-300">More Folders</h2>
+        <FolderGrid items={sortedFolders.slice(4)} sizeScale={folderSizeScale} onFolderMenu={openFolderMenu} onFolderOpen={openFolder} onDropItem={handleDropItem} />
       </> : null}
       {activeFolder && folders.length > 0 ? <>
-        <h2 className="mt-4 font-extrabold text-slate-700">Folders</h2>
-        <FolderGrid items={folders} sizeScale={folderSizeScale} onFolderMenu={openFolderMenu} onFolderOpen={openFolder} onDropItem={handleDropItem} />
+        <h2 className="mt-4 font-extrabold text-slate-700 dark:text-slate-300">Folders</h2>
+        <FolderGrid items={sortedFolders} sizeScale={folderSizeScale} onFolderMenu={openFolderMenu} onFolderOpen={openFolder} onDropItem={handleDropItem} />
       </> : null}
-      <div className="mt-4 flex flex-col gap-2 sm:mt-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-3"><Button variant="soft" className="hidden sm:inline-flex"><Archive className="h-4 w-4" />Recents</Button><Button variant="soft" className="hidden sm:inline-flex"><Star className="h-4 w-4" />Starred</Button>{selectedFileIds.size > 0 ? <div className="flex w-full flex-col gap-3 rounded-2xl border border-orange-500/20 bg-orange-500/10 p-3 sm:w-auto sm:flex-row sm:items-center sm:border-0 sm:bg-transparent sm:p-0"><span className="text-sm font-extrabold text-slate-700">{selectedFileIds.size} selected</span><div className="grid grid-cols-4 gap-2 sm:flex sm:gap-3"><Button className="w-full" variant="outline" onClick={downloadBatchAsZip}><Download className="h-4 w-4" />ZIP</Button><Button className="w-full" variant="outline" onClick={() => setMoveOpen(true)}><FolderInput className="h-4 w-4" />Move</Button><Button className="w-full" variant="danger" onClick={() => setDeleteOpen(true)}><Trash2 className="h-4 w-4" />Delete</Button><Button className="w-full" variant="ghost" onClick={clearSelection}>Clear</Button></div></div> : null}</div>
-        <div className="flex gap-3"><Button variant={fileViewMode === 'grid' ? 'soft' : 'outline'} size="icon" aria-label="Show files as grid" aria-pressed={fileViewMode === 'grid'} onClick={() => changeFileViewMode('grid')}><LayoutGrid className="h-5 w-5" /></Button><Button variant={fileViewMode === 'list' ? 'soft' : 'outline'} size="icon" aria-label="Show files as list" aria-pressed={fileViewMode === 'list'} onClick={() => changeFileViewMode('list')}><List className="h-5 w-5" /></Button></div>
+      <div className="mt-4 flex flex-col gap-2.5 sm:mt-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="soft" className="hidden sm:inline-flex" onClick={() => window.location.href = '/recent'}>
+            <Archive className="h-4 w-4" />Recents
+          </Button>
+          <Button variant="soft" className="hidden sm:inline-flex" onClick={() => window.location.href = '/starred'}>
+            <Star className="h-4 w-4" />Starred
+          </Button>
+          {selectedFileIds.size > 0 ? (
+            <div className="flex w-full flex-col gap-3 rounded-2xl border border-orange-500/20 bg-orange-500/10 p-3 sm:w-auto sm:flex-row sm:items-center sm:border-0 sm:bg-transparent sm:p-0">
+              <span className="text-sm font-extrabold text-slate-700 dark:text-slate-300">{selectedFileIds.size} selected</span>
+              <div className="grid grid-cols-4 gap-2 sm:flex sm:gap-3">
+                <Button className="w-full" variant="outline" onClick={downloadBatchAsZip}><Download className="h-4 w-4" />ZIP</Button>
+                <Button className="w-full" variant="outline" onClick={() => setMoveOpen(true)}><FolderInput className="h-4 w-4" />Move</Button>
+                <Button className="w-full" variant="danger" onClick={() => setDeleteOpen(true)}><Trash2 className="h-4 w-4" />Delete</Button>
+                <Button className="w-full" variant="ghost" onClick={clearSelection}>Clear</Button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2.5">
+          <SortControl sort={sortState} onSortChange={changeSort} />
+          <div className="flex gap-1.5 border-l border-slate-200 dark:border-slate-800 pl-2.5">
+            <Button variant={fileViewMode === 'grid' ? 'soft' : 'outline'} size="icon" aria-label="Show files as grid" aria-pressed={fileViewMode === 'grid'} onClick={() => changeFileViewMode('grid')}><LayoutGrid className="h-5 w-5" /></Button>
+            <Button variant={fileViewMode === 'list' ? 'soft' : 'outline'} size="icon" aria-label="Show files as list" aria-pressed={fileViewMode === 'list'} onClick={() => changeFileViewMode('list')}><List className="h-5 w-5" /></Button>
+          </div>
+        </div>
       </div>
       {cutFolder ? <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-700"><ClipboardPaste className="mr-2 inline h-4 w-4" />Cut folder: {cutFolder.name}. Press Ctrl+V or right-click empty area to paste here.</p> : null}
       {files.length === 0 ? (
@@ -751,9 +806,19 @@ export function AllFilesPage() {
       ) : (
         <Card className="mt-3 p-4 sm:p-5 bg-white dark:bg-[#0c1220] border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
           {fileViewMode === 'grid' ? (
-            <FileGrid files={files} selectedFileIds={selectedFileIds} sizeScale={folderSizeScale} onToggleFile={toggleFileSelection} onFileContextMenu={openContext} />
+            <FileGrid files={sortedFiles} selectedFileIds={selectedFileIds} sizeScale={folderSizeScale} onToggleFile={toggleFileSelection} onFileContextMenu={openContext} />
           ) : (
-            <FileTable files={files} selectedFileIds={selectedFileIds} allSelected={allVisibleSelected} onToggleFile={toggleFileSelection} onToggleAll={toggleAllVisibleFiles} onFileContextMenu={openContext} />
+            <FileTable
+              files={sortedFiles}
+              selectedFileIds={selectedFileIds}
+              allSelected={allVisibleSelected}
+              sortField={sortState.field}
+              sortDirection={sortState.direction}
+              onSort={handleHeaderSort}
+              onToggleFile={toggleFileSelection}
+              onToggleAll={toggleAllVisibleFiles}
+              onFileContextMenu={openContext}
+            />
           )}
         </Card>
       )}

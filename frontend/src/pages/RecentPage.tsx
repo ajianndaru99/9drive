@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Clock, Eye, FileText } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { FileTable } from '@/components/drive/FileTable'
 import { MetricCard } from '@/components/drive/MetricCard'
 import { PageHeader } from '@/components/drive/PageHeader'
+import { SortControl, type SortField, type SortState, sortFilesList } from '@/components/drive/SortControl'
 import { DummyModal } from '@/components/drive/DummyModal'
 import { Button } from '@/components/ui/button'
 import { apiFetch, formatBytes, formatDate } from '@/lib/api'
@@ -49,33 +50,44 @@ function mapFile(file: BackendFile): FileItem {
 export function RecentPage() {
   const [files, setFiles] = useState<FileItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeFile, setActiveFile] = useState<FileItem | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [activeFile, setActiveFile] = useState<FileItem | null>(null)
   const [previewUrl, setPreviewUrl] = useState('')
+  const [sortState, setSortState] = useState<SortState>({ field: 'date', direction: 'desc' })
 
-  async function loadRecent() {
-    setLoading(true)
-    try {
-      const data = await apiFetch<{ files: BackendFile[] }>('/files/recent')
-      setFiles(data.files.map(mapFile))
-    } catch (err) {
-      console.error('Failed to load recent files', err)
-    } finally {
-      setLoading(false)
-    }
+  function handleHeaderSort(field: SortField) {
+    setSortState((prev) => ({
+      field,
+      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
+    }))
   }
 
+  const sortedFiles = useMemo(() => {
+    return sortFilesList(files, sortState.field, sortState.direction)
+  }, [files, sortState])
+
   useEffect(() => {
-    loadRecent()
+    async function load() {
+      setLoading(true)
+      try {
+        const data = await apiFetch<{ files: BackendFile[] }>('/files/recent')
+        setFiles(data.files.map(mapFile))
+      } catch (err) {
+        console.error('Failed to load recent files', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
   async function openPreview(file: FileItem) {
-    if (!file.id) return
     setActiveFile(file)
+    setPreviewOpen(true)
+    setPreviewUrl('')
     try {
-      const data = await apiFetch<{ path: string }>(`/files/${file.id}/preview-token`, { method: 'POST' })
-      setPreviewUrl(data.path)
-      setPreviewOpen(true)
+      const data = await apiFetch<{ url?: string }>(`/files/${file.id}/view-url`)
+      if (data?.url) setPreviewUrl(data.url)
     } catch (err) {
       console.error('Failed to load preview', err)
     }
@@ -99,17 +111,23 @@ export function RecentPage() {
       </div>
 
       <div className="mt-8">
-        <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-500">Recent Files</h2>
+        <div className="flex items-center justify-between gap-4 mb-3">
+          <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Recent Files</h2>
+          <SortControl sort={sortState} onSortChange={setSortState} />
+        </div>
         {files.length === 0 && !loading ? (
-          <Card className="mt-3 p-8 text-center bg-slate-50 border border-dashed border-slate-200">
+          <Card className="mt-3 p-8 text-center bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800">
             <Clock className="mx-auto h-8 w-8 text-slate-400" />
-            <p className="mt-2 text-sm font-bold text-slate-700">No recent activity yet</p>
-            <p className="text-xs text-slate-500">Files you open, upload, or preview will appear here automatically.</p>
+            <p className="mt-2 text-sm font-bold text-slate-700 dark:text-slate-200">No recent activity yet</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Files you open, upload, or preview will appear here automatically.</p>
           </Card>
         ) : (
           <FileTable
-            files={files}
+            files={sortedFiles}
             mode="recent"
+            sortField={sortState.field}
+            sortDirection={sortState.direction}
+            onSort={handleHeaderSort}
             onFileContextMenu={(_e, file) => openPreview(file)}
           />
         )}

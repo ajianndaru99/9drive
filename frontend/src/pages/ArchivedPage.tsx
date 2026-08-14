@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Archive, RotateCcw, Trash2, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { FileTable } from '@/components/drive/FileTable'
 import { MetricCard } from '@/components/drive/MetricCard'
 import { PageHeader } from '@/components/drive/PageHeader'
+import { SortControl, type SortField, type SortState, sortFilesList } from '@/components/drive/SortControl'
 import { DummyModal } from '@/components/drive/DummyModal'
 import { apiFetch, formatBytes, formatDate } from '@/lib/api'
 import type { FileItem } from '@/data/drive-data'
@@ -43,8 +44,7 @@ function mapFile(file: BackendFile): FileItem {
     kind: mimeToKind(file.mimeType),
     shared: 1,
     folderId: file.folderId,
-    folderName: file.folder?.name,
-    isArchived: true
+    folderName: file.folder?.name
   }
 }
 
@@ -52,16 +52,28 @@ export function ArchivedPage() {
   const [files, setFiles] = useState<FileItem[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set())
-  const [message, setMessage] = useState('')
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [message, setMessage] = useState('')
+  const [sortState, setSortState] = useState<SortState>({ field: 'date', direction: 'desc' })
+
+  function handleHeaderSort(field: SortField) {
+    setSortState((prev) => ({
+      field,
+      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc'
+    }))
+  }
+
+  const sortedFiles = useMemo(() => {
+    return sortFilesList(files, sortState.field, sortState.direction)
+  }, [files, sortState])
 
   async function loadArchived() {
     setLoading(true)
     try {
       const data = await apiFetch<{ files: BackendFile[] }>('/files/archived')
       setFiles(data.files.map(mapFile))
-    } catch (err: any) {
-      setMessage(err.message || 'Failed to load archived files')
+    } catch (err) {
+      console.error('Failed to load archived files', err)
     } finally {
       setLoading(false)
     }
@@ -75,8 +87,11 @@ export function ArchivedPage() {
     if (!file.id) return
     setSelectedFileIds((prev) => {
       const next = new Set(prev)
-      if (next.has(file.id!)) next.delete(file.id!)
-      else next.add(file.id!)
+      if (next.has(file.id!)) {
+        next.delete(file.id!)
+      } else {
+        next.add(file.id!)
+      }
       return next
     })
   }
@@ -89,32 +104,35 @@ export function ArchivedPage() {
     }
   }
 
-  async function restoreSelected() {
-    const fileIds = Array.from(selectedFileIds)
-    if (fileIds.length === 0) return
+  async function unarchiveSelected() {
+    if (selectedFileIds.size === 0) return
+    const ids = Array.from(selectedFileIds)
     try {
-      await Promise.all(fileIds.map((id) => apiFetch(`/files/${id}/archive`, { method: 'PATCH' })))
-      setMessage(`Restored ${fileIds.length} item(s) to active workspace.`)
+      await Promise.all(
+        ids.map((id) => apiFetch(`/files/${id}/archive`, { method: 'PATCH' }))
+      )
+      setMessage(`Restored ${ids.length} item(s) to active files.`)
       setSelectedFileIds(new Set())
       loadArchived()
+      setTimeout(() => setMessage(''), 3000)
     } catch (err: any) {
       setMessage(err.message || 'Failed to restore files')
     }
   }
 
   async function deleteSelected() {
-    const fileIds = Array.from(selectedFileIds)
-    if (fileIds.length === 0) return
+    if (selectedFileIds.size === 0) return
+    const ids = Array.from(selectedFileIds)
     try {
       await apiFetch('/files/batch', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileIds })
+        body: JSON.stringify({ fileIds: ids })
       })
-      setMessage(`Moved ${fileIds.length} item(s) to Recycle Bin.`)
+      setMessage(`Moved ${ids.length} item(s) to Recycle Bin.`)
       setSelectedFileIds(new Set())
       setDeleteConfirmOpen(false)
       loadArchived()
+      setTimeout(() => setMessage(''), 3000)
     } catch (err: any) {
       setMessage(err.message || 'Failed to delete files')
     }
@@ -125,16 +143,18 @@ export function ArchivedPage() {
   return (
     <>
       <PageHeader
-        title="Archived"
-        description="Older files kept out of your active workspace."
+        title="Archived Files"
+        description="Safely stored files removed from the main workspace. Recover them anytime."
         actions={
           selectedFileIds.size > 0 ? (
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={restoreSelected}>
-                <RotateCcw className="h-4 w-4" /> Restore ({selectedFileIds.size})
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={unarchiveSelected}>
+                <RotateCcw className="h-4 w-4" />
+                Unarchive ({selectedFileIds.size})
               </Button>
-              <Button variant="danger" size="sm" onClick={() => setDeleteConfirmOpen(true)}>
-                <Trash2 className="h-4 w-4" /> Move to Trash
+              <Button size="sm" variant="danger" onClick={() => setDeleteConfirmOpen(true)}>
+                <Trash2 className="h-4 w-4" />
+                Delete ({selectedFileIds.size})
               </Button>
             </div>
           ) : undefined
@@ -150,19 +170,25 @@ export function ArchivedPage() {
       </div>
 
       <div className="mt-8">
-        <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-500">Archived Files</h2>
+        <div className="flex items-center justify-between gap-4 mb-3">
+          <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Archived Files</h2>
+          <SortControl sort={sortState} onSortChange={setSortState} />
+        </div>
         {files.length === 0 && !loading ? (
-          <Card className="mt-3 p-8 text-center bg-slate-50 border border-dashed border-slate-200">
+          <Card className="mt-3 p-8 text-center bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800">
             <Archive className="mx-auto h-8 w-8 text-slate-400" />
-            <p className="mt-2 text-sm font-bold text-slate-700">No archived files</p>
-            <p className="text-xs text-slate-500">Archive old files to keep your main workspace tidy without deleting them.</p>
+            <p className="mt-2 text-sm font-bold text-slate-700 dark:text-slate-200">No archived files</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Archive old files to keep your main workspace tidy without deleting them.</p>
           </Card>
         ) : (
           <FileTable
-            files={files}
+            files={sortedFiles}
             mode="archived"
             selectedFileIds={selectedFileIds}
             allSelected={allSelected}
+            sortField={sortState.field}
+            sortDirection={sortState.direction}
+            onSort={handleHeaderSort}
             onToggleFile={toggleFileSelection}
             onToggleAll={toggleAllVisible}
           />

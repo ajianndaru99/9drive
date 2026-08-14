@@ -1,16 +1,61 @@
-import { FolderOpen, MoreVertical, Star } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, FolderOpen, MoreVertical, Star } from 'lucide-react'
 import { type MouseEvent, useState } from 'react'
 import { AvatarStack } from '@/components/drive/AvatarStack'
 import { FileIcon } from '@/components/drive/FileIcon'
+import type { SortField, SortDirection } from '@/components/drive/SortControl'
 import type { FileItem } from '@/data/drive-data'
 import { apiFetch } from '@/lib/api'
 import { cn } from '@/lib/utils'
+
+function HeaderSortButton({
+  label,
+  field,
+  currentField,
+  currentDirection,
+  onSort
+}: {
+  label: string
+  field: SortField
+  currentField?: SortField
+  currentDirection?: SortDirection
+  onSort?: (field: SortField) => void
+}) {
+  if (!onSort) return <span>{label}</span>
+
+  const isActive = currentField === field
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(field)}
+      className={cn(
+        'group inline-flex items-center gap-1.5 font-bold uppercase tracking-wider transition-colors select-none text-left focus:outline-none',
+        isActive
+          ? 'text-blue-600 dark:text-blue-400'
+          : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+      )}
+    >
+      <span>{label}</span>
+      {isActive ? (
+        currentDirection === 'asc' ? (
+          <ArrowUp className="h-3.5 w-3.5" />
+        ) : (
+          <ArrowDown className="h-3.5 w-3.5" />
+        )
+      ) : (
+        <ArrowUpDown className="h-3.5 w-3.5 opacity-0 group-hover:opacity-60 transition-opacity" />
+      )}
+    </button>
+  )
+}
 
 export function FileTable({
   files,
   mode = 'default',
   selectedFileIds = new Set<string>(),
   allSelected = false,
+  sortField,
+  sortDirection,
+  onSort,
   onFileContextMenu,
   onToggleFile,
   onToggleAll
@@ -19,6 +64,9 @@ export function FileTable({
   mode?: 'default' | 'shared' | 'recent' | 'starred' | 'archived'
   selectedFileIds?: Set<string>
   allSelected?: boolean
+  sortField?: SortField
+  sortDirection?: SortDirection
+  onSort?: (field: SortField) => void
   onFileContextMenu?: (event: MouseEvent<HTMLElement>, file: FileItem) => void
   onToggleFile?: (file: FileItem) => void
   onToggleAll?: () => void
@@ -111,18 +159,40 @@ export function FileTable({
               <th className="w-12 px-5 py-3.5">
                 <input type="checkbox" className="h-4 w-4 accent-blue-600 rounded" checked={allSelected} onChange={onToggleAll} />
               </th>
-              <th className="px-5 py-3.5 min-w-[220px]">Name</th>
-              {mode === 'default' ? <th className="px-5 py-3.5 min-w-[160px]">Folder</th> : null}
+              <th className="px-5 py-3.5 min-w-[220px]">
+                <HeaderSortButton label="Name" field="name" currentField={sortField} currentDirection={sortDirection} onSort={onSort} />
+              </th>
+              {mode === 'default' ? (
+                <th className="px-5 py-3.5 min-w-[160px]">
+                  <HeaderSortButton label="Folder" field="folder" currentField={sortField} currentDirection={sortDirection} onSort={onSort} />
+                </th>
+              ) : null}
               {mode === 'shared' ? <th className="px-5 py-3.5 min-w-[150px]">Owner</th> : null}
-              {mode === 'recent' ? <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">Last Opened</th> : null}
-              {mode === 'starred' ? <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">Starred On</th> : null}
-              {mode === 'archived' ? <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">Archived Date</th> : null}
+              {mode === 'recent' ? (
+                <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">
+                  <HeaderSortButton label="Last Opened" field="date" currentField={sortField} currentDirection={sortDirection} onSort={onSort} />
+                </th>
+              ) : null}
+              {mode === 'starred' ? (
+                <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">
+                  <HeaderSortButton label="Starred On" field="date" currentField={sortField} currentDirection={sortDirection} onSort={onSort} />
+                </th>
+              ) : null}
+              {mode === 'archived' ? (
+                <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">
+                  <HeaderSortButton label="Archived Date" field="date" currentField={sortField} currentDirection={sortDirection} onSort={onSort} />
+                </th>
+              ) : null}
               {mode === 'archived' ? (
                 <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">Original Location</th>
               ) : (
-                <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">Last Modified</th>
+                <th className="px-5 py-3.5 min-w-[200px] whitespace-nowrap">
+                  <HeaderSortButton label="Last Modified" field="date" currentField={sortField} currentDirection={sortDirection} onSort={onSort} />
+                </th>
               )}
-              <th className="px-5 py-3.5 min-w-[110px] whitespace-nowrap">Size</th>
+              <th className="px-5 py-3.5 min-w-[110px] whitespace-nowrap">
+                <HeaderSortButton label="Size" field="size" currentField={sortField} currentDirection={sortDirection} onSort={onSort} />
+              </th>
               <th className="px-5 py-3.5 min-w-[170px] whitespace-nowrap">Access</th>
               <th className="px-5 py-3.5 w-28 min-w-[110px] text-right">Actions</th>
             </tr>
