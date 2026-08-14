@@ -122,12 +122,32 @@ function SystemInfoDropdown({ storage }: { storage: any }) {
   )
 }
 
-function Sidebar({ onNavigate, user, storage, breakdown, onLogout }: { onNavigate?: () => void; user: AuthUser | null; storage: StorageSummary | null; breakdown: StorageBreakdown; onLogout: () => void }) {
+function Sidebar({
+  onNavigate,
+  user,
+  storage,
+  breakdown,
+  onLogout,
+  theme,
+  onToggleTheme
+}: {
+  onNavigate?: () => void
+  user: AuthUser | null
+  storage: StorageSummary | null
+  breakdown: StorageBreakdown
+  onLogout: () => void
+  theme?: 'light' | 'dark'
+  onToggleTheme?: () => void
+}) {
+  const navigate = useNavigate()
   const used = Number(storage?.usedBytes ?? 0)
   const total = Number(storage?.totalBytes ?? 0)
   const progress = total > 0 ? Math.min(100, (used / total) * 100) : 0
   const [profileImageUrl, setProfileImageUrl] = useState('')
   const [avatarError, setAvatarError] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+
   const items = [
     ['Photo', formatBytes(breakdown.photo), 'bg-lime-500'],
     ['Video', formatBytes(breakdown.video), 'bg-yellow-400'],
@@ -140,6 +160,18 @@ function Sidebar({ onNavigate, user, storage, breakdown, onLogout }: { onNavigat
     getGravatarUrl(user?.email, 64).then(setProfileImageUrl).catch(() => setProfileImageUrl(''))
   }, [user?.email])
 
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false)
+      }
+    }
+    if (userMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [userMenuOpen])
+
   return (
     <aside className="flex h-full w-64 flex-col border-slate-200/60 bg-slate-50/40 backdrop-blur-xl p-4 lg:border-r">
       <div className="flex items-center gap-2.5 pb-3 pt-1">
@@ -147,24 +179,126 @@ function Sidebar({ onNavigate, user, storage, breakdown, onLogout }: { onNavigat
         <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">9Drive</span>
       </div>
 
-      <div className="flex items-center gap-2.5 border-y border-slate-200/60 py-3 my-3">
-        {!profileImageUrl || avatarError ? (
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-sm border border-blue-400/20">
-            {(user?.name ?? user?.email ?? 'U').trim().charAt(0).toUpperCase()}
+      <div ref={userMenuRef} className="relative">
+        <div className="flex items-center gap-2.5 border-y border-slate-200/60 py-3 my-3">
+          {!profileImageUrl || avatarError ? (
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-bold text-white shadow-sm border border-blue-400/20">
+              {(user?.name ?? user?.email ?? 'U').trim().charAt(0).toUpperCase()}
+            </div>
+          ) : (
+            <img
+              src={profileImageUrl}
+              alt="User avatar"
+              className="h-8 w-8 rounded-full border border-slate-200 object-cover"
+              onError={() => setAvatarError(true)}
+            />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[15px] font-bold text-slate-900 leading-none">{user?.name ?? 'User'}</p>
+            <p className="truncate text-xs text-slate-500 mt-1">{user?.email ?? 'Loading...'}</p>
           </div>
-        ) : (
-          <img
-            src={profileImageUrl}
-            alt="User avatar"
-            className="h-8 w-8 rounded-full border border-slate-200 object-cover"
-            onError={() => setAvatarError(true)}
-          />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-bold text-slate-900 leading-none">{user?.name ?? 'User'}</p>
-          <p className="truncate text-xs text-slate-500 mt-1">{user?.email ?? 'Loading...'}</p>
+          <button
+            type="button"
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200/70 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+            aria-label="User account options"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </button>
         </div>
-        <MoreVertical className="h-4 w-4 text-slate-400" />
+
+        {/* Interactive User Avatar 3-Dots Menu Popover */}
+        {userMenuOpen && (
+          <div className="absolute left-0 right-0 top-16 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-950/20 backdrop-blur-2xl dark:border-slate-800 dark:bg-slate-900 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="border-b border-slate-100 dark:border-slate-800 px-3 py-2.5 bg-slate-50/50 dark:bg-slate-800/40 rounded-xl mb-1.5">
+              <p className="truncate text-xs font-bold text-slate-900 dark:text-white">{user?.name ?? 'User Account'}</p>
+              <p className="truncate text-[11px] text-slate-400">{user?.email}</p>
+            </div>
+
+            <div className="space-y-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setUserMenuOpen(false)
+                  onNavigate?.()
+                  navigate('/settings')
+                }}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <Settings className="h-3.5 w-3.5 text-blue-600" />
+                <span>Account & Drive Settings</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setUserMenuOpen(false)
+                  onNavigate?.()
+                  navigate('/quota')
+                }}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <Gauge className="h-3.5 w-3.5 text-indigo-600" />
+                <span>Storage Quota Tracker</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setUserMenuOpen(false)
+                  onNavigate?.()
+                  navigate('/activity')
+                }}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <History className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Activity & Audit Log</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setUserMenuOpen(false)
+                  onNavigate?.()
+                  navigate('/api')
+                }}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <Braces className="h-3.5 w-3.5 text-violet-600" />
+                <span>API Keys & Webhooks</span>
+              </button>
+
+              {onToggleTheme && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToggleTheme()
+                  }}
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <span className="flex items-center gap-2.5">
+                    {theme === 'light' ? <Moon className="h-3.5 w-3.5 text-slate-600" /> : <Sun className="h-3.5 w-3.5 text-amber-500" />}
+                    <span>{theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}</span>
+                  </span>
+                </button>
+              )}
+
+              <div className="my-1.5 h-px bg-slate-100 dark:bg-slate-800" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setUserMenuOpen(false)
+                  onLogout()
+                }}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Log Out</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <nav className="grid gap-1">
@@ -449,7 +583,7 @@ export function DriveLayout() {
     <main className="min-h-screen w-full overflow-x-hidden bg-white">
       <div className="flex min-h-screen w-full flex-col bg-white lg:h-screen lg:overflow-hidden lg:flex-row">
         <div className="hidden lg:block lg:h-screen lg:shrink-0">
-          <Sidebar user={user} storage={storage} breakdown={breakdown} onLogout={logout} />
+          <Sidebar user={user} storage={storage} breakdown={breakdown} onLogout={logout} theme={theme} onToggleTheme={toggleTheme} />
         </div>
         <div className={cn('fixed inset-0 z-40 bg-slate-950/40 transition-opacity lg:hidden', sidebarOpen ? 'opacity-100' : 'pointer-events-none opacity-0')} onClick={() => setSidebarOpen(false)} />
         <div className={cn('fixed inset-y-0 left-0 z-50 transform bg-white shadow-2xl transition-transform duration-300 ease-out lg:hidden', sidebarOpen ? 'translate-x-0' : '-translate-x-full')}>
@@ -458,7 +592,7 @@ export function DriveLayout() {
               <X className="h-5 w-5" />
             </Button>
           </div>
-          <Sidebar user={user} storage={storage} breakdown={breakdown} onLogout={logout} onNavigate={() => setSidebarOpen(false)} />
+          <Sidebar user={user} storage={storage} breakdown={breakdown} onLogout={logout} onNavigate={() => setSidebarOpen(false)} theme={theme} onToggleTheme={toggleTheme} />
         </div>
         <section className="min-w-0 flex-1 p-4 sm:p-6 lg:h-screen lg:overflow-y-auto lg:p-8">
           <header className="flex w-full min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -632,35 +766,35 @@ export function DriveLayout() {
       </div>
 
       {uploadProgress.open ? (
-        <div className="fixed inset-x-3 bottom-3 z-[70] max-h-[70dvh] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/20 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(420px,calc(100vw-2.5rem))]">
-          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-            <div className="flex items-center gap-2 font-extrabold text-sm text-slate-950">
+        <div className="fixed inset-x-3 bottom-3 z-[70] max-h-[70dvh] overflow-hidden rounded-2xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-800 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(420px,calc(100vw-2.5rem))] floating-upload-panel">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/90 px-4 py-3">
+            <div className="flex items-center gap-2 font-extrabold text-sm text-slate-950 dark:text-white">
               {uploadProgress.status === 'done' ? <CheckCircle className="h-5 w-5 text-emerald-500" /> : uploadProgress.status === 'partial' || uploadProgress.status === 'error' ? <X className="h-5 w-5 text-red-500" /> : <Upload className="h-5 w-5 text-blue-600" />}
               {uploadProgress.status === 'done' ? 'Upload complete' : uploadProgress.status === 'partial' ? 'Upload completed with errors' : uploadProgress.status === 'error' ? 'Upload failed' : uploadProgress.percent >= 99 ? 'Processing on server' : 'Uploading files'}
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setUploadProgressCollapsed(!uploadProgressCollapsed)}><ChevronDown className={cn("h-4 w-4 transition-transform", uploadProgressCollapsed && "rotate-180")} /></Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setUploadProgress((current) => ({ ...current, open: false }))}><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" onClick={() => setUploadProgressCollapsed(!uploadProgressCollapsed)}><ChevronDown className={cn("h-4 w-4 transition-transform", uploadProgressCollapsed && "rotate-180")} /></Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" onClick={() => setUploadProgress((current) => ({ ...current, open: false }))}><X className="h-4 w-4" /></Button>
             </div>
           </div>
           {!uploadProgressCollapsed && (
-            <div className="p-4">
+            <div className="p-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
               <div className="flex items-center justify-between gap-3 text-sm">
-                <p className="truncate font-semibold">{uploadProgress.fileName}</p>
-                <span className="text-slate-500">{uploadProgress.percent}%</span>
+                <p className="truncate font-semibold text-slate-900 dark:text-slate-100">{uploadProgress.fileName}</p>
+                <span className="text-slate-500 dark:text-slate-400 font-bold">{uploadProgress.percent}%</span>
               </div>
-              <div className="mt-3 h-2 rounded-full bg-slate-100">
+              <div className="mt-3 h-2 rounded-full bg-slate-100 dark:bg-slate-800">
                 <div className={uploadProgress.status === 'error' || uploadProgress.status === 'partial' ? 'h-full rounded-full bg-red-500' : uploadProgress.status === 'done' ? 'h-full rounded-full bg-emerald-500' : 'h-full rounded-full bg-blue-600'} style={{ width: `${uploadProgress.percent}%` }} />
               </div>
               {uploadProgress.files.length > 0 ? (
-                <div className="mt-4 grid max-h-64 gap-3 overflow-y-auto pr-1 text-slate-950">
+                <div className="mt-4 grid max-h-64 gap-3 overflow-y-auto pr-1 text-slate-950 dark:text-slate-100">
                   {uploadProgress.files.map((file, index) => (
-                    <div key={`${file.name}-${file.size}-${index}`} className="grid gap-1 rounded-xl bg-slate-50 p-3">
+                    <div key={`${file.name}-${file.size}-${index}`} className="grid gap-1 rounded-xl bg-slate-50 dark:bg-slate-800/80 p-3 border border-slate-100 dark:border-slate-700/60">
                       <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
-                        <p className="min-w-0 flex-1 truncate font-semibold" title={file.name}>{file.name}</p>
-                        <span className="shrink-0 text-xs text-slate-500">{file.percent}%</span>
+                        <p className="min-w-0 flex-1 truncate font-semibold text-slate-900 dark:text-slate-100" title={file.name}>{file.name}</p>
+                        <span className="shrink-0 text-xs font-bold text-slate-500 dark:text-slate-400">{file.percent}%</span>
                       </div>
-                      <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+                      <div className="flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
                         <span>{formatBytes(file.size)}</span>
                         <div className="flex items-center gap-2">
                           {file.status === 'error' && (
@@ -673,7 +807,7 @@ export function DriveLayout() {
                           </span>
                         </div>
                       </div>
-                      <div className="h-1.5 rounded-full bg-slate-200">
+                      <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
                         <div className={file.status === 'error' ? 'h-full rounded-full bg-red-500' : file.status === 'done' ? 'h-full rounded-full bg-emerald-500' : 'h-full rounded-full bg-blue-600'} style={{ width: `${file.percent}%` }} />
                       </div>
                     </div>

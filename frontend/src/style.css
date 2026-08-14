@@ -110,20 +110,25 @@ input {
   font: inherit;
 }
 
-/* Force layout transparency to let background gradients shine through */
-main,
-main.bg-white,
-main div.bg-white,
-main section.bg-white,
+/* Force layout root transparency */
+main.drive-main-layout,
+.drive-layout-root,
 section.min-w-0 {
   background: transparent !important;
   background-color: transparent !important;
 }
 
-/* Override solid bg-white on containers to keep glass effect */
-div.bg-white:not(button),
-section.bg-white:not(button) {
-  background-color: transparent !important;
+/* Floating upload progress panel */
+.floating-upload-panel {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+:where(.dark, .dark *) .floating-upload-panel {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 /* Map Tailwind Slate background utilities to theme variables */
