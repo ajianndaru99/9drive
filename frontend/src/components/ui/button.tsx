@@ -30,6 +30,11 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {}
 
-export function Button({ className, variant, size, ...props }: ButtonProps) {
-  return <button className={cn(buttonVariants({ variant, size, className }))} {...props} />
+export function Button({ className, variant, size, children, ...props }: ButtonProps) {
+  return (
+    <button className={cn(buttonVariants({ variant, size, className }), 'relative overflow-hidden cursor-pointer')} {...props}>
+      <md-ripple />
+      {children}
+    </button>
+  )
 }

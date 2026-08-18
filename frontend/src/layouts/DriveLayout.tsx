@@ -12,6 +12,7 @@ import {
   Menu,
   Moon,
   MoreVertical,
+  RefreshCw,
   Search,
   Settings,
   Share2,
@@ -31,7 +32,6 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BrandLogo } from '@/components/drive/BrandLogo'
-import { Input } from '@/components/ui/input'
 import { apiFetch, formatBytes } from '@/lib/api'
 import { useUpload } from '@/context/UploadContext'
 import { clearAuthSession, getStoredUser, updateStoredUser, type AuthUser } from '@/lib/auth'
@@ -144,7 +144,9 @@ function Sidebar({
   const total = Number(storage?.totalBytes ?? 0)
   const progress = total > 0 ? Math.min(100, (used / total) * 100) : 0
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [newMenuOpen, setNewMenuOpen] = useState(false)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const newMenuRef = useRef<HTMLDivElement>(null)
 
   const items = [
     ['Photo', formatBytes(breakdown.photo), 'bg-lime-500'],
@@ -158,12 +160,15 @@ function Sidebar({
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false)
       }
+      if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) {
+        setNewMenuOpen(false)
+      }
     }
-    if (userMenuOpen) {
+    if (userMenuOpen || newMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside)
     }
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [userMenuOpen])
+  }, [userMenuOpen, newMenuOpen])
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 p-4 transition-colors duration-200">
@@ -172,8 +177,68 @@ function Sidebar({
         <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">9Drive</span>
       </div>
 
+      {/* Google Drive M3 "+ New" Extended FAB */}
+      <div ref={newMenuRef} className="relative my-2">
+        <button
+          type="button"
+          onClick={() => setNewMenuOpen(!newMenuOpen)}
+          className="group relative flex h-13 w-full items-center gap-3.5 rounded-2xl bg-white px-4 text-slate-800 shadow-[0_1px_3px_0_rgba(60,64,67,0.3),0_4px_8px_3px_rgba(60,64,67,0.15)] hover:shadow-[0_2px_6px_2px_rgba(60,64,67,0.3),0_6px_10px_4px_rgba(60,64,67,0.15)] dark:bg-[#1e293b] dark:text-slate-100 dark:shadow-[0_2px_8px_rgba(0,0,0,0.5)] dark:hover:bg-[#283548] transition-all duration-200 active:scale-[0.98] border border-slate-200/80 dark:border-slate-700/80 overflow-hidden cursor-pointer"
+        >
+          <md-ripple />
+          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-sm group-hover:scale-110 transition-transform">
+            <Upload className="h-3.5 w-3.5" />
+          </div>
+          <span className="text-sm font-extrabold tracking-wide text-slate-900 dark:text-white">New</span>
+          <ChevronDown className={cn("ml-auto h-4 w-4 text-slate-400 transition-transform duration-200", newMenuOpen && "rotate-180")} />
+        </button>
+
+        {newMenuOpen && (
+          <div className="absolute left-0 right-0 top-15 z-[100] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-700 dark:bg-slate-800 animate-in fade-in slide-in-from-top-2 duration-150">
+            <button
+              type="button"
+              onClick={() => {
+                setNewMenuOpen(false)
+                onNavigate?.()
+                window.dispatchEvent(new Event('9drive:trigger-upload'))
+                if (location.pathname !== '/all-files') navigate('/all-files')
+              }}
+              className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/80 transition-colors cursor-pointer"
+            >
+              <Upload className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span>File upload</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setNewMenuOpen(false)
+                onNavigate?.()
+                window.dispatchEvent(new Event('9drive:trigger-new-folder'))
+                if (location.pathname !== '/all-files') navigate('/all-files')
+              }}
+              className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/80 transition-colors cursor-pointer"
+            >
+              <Folder className="h-4 w-4 text-amber-500" />
+              <span>New folder</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setNewMenuOpen(false)
+                onNavigate?.()
+                window.dispatchEvent(new Event('9drive:trigger-sync'))
+                if (location.pathname !== '/all-files') navigate('/all-files')
+              }}
+              className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/80 transition-colors cursor-pointer"
+            >
+              <RefreshCw className="h-4 w-4 text-emerald-500" />
+              <span>Sync Google Drive</span>
+            </button>
+          </div>
+        )}
+      </div>
+
       <div ref={userMenuRef} className="relative">
-        <div className="flex items-center gap-3 border-y border-slate-100 dark:border-slate-800 py-3 my-3">
+        <div className="flex items-center gap-3 border-y border-slate-100 dark:border-slate-800 py-3 my-2">
           <UserInitialsAvatar
             name={user?.name}
             email={user?.email}
@@ -618,18 +683,49 @@ export function DriveLayout() {
                 </div>
               </div>
             </div>
-            <div ref={searchContainerRef} className="relative w-full min-w-0 flex-1 lg:max-w-sm xl:max-w-xl">
+            <div ref={searchContainerRef} className="relative w-full min-w-0 flex-1 lg:max-w-md xl:max-w-xl">
               <form onSubmit={searchFiles} className="relative w-full">
-                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                <Input value={searchValue} onFocus={() => { if (searchValue.trim().length >= 2) setLiveSearchOpen(true) }} onChange={(event) => setSearchValue(event.target.value)} placeholder="Search Documents, Folders, or Files..." className="pl-11 pr-12 rounded-2xl border-slate-200/80 bg-white/90 dark:border-slate-800 dark:bg-[#0f172a] shadow-sm text-sm focus:border-blue-500" />
-                <button type="button" onClick={() => setFiltersOpen(!filtersOpen)} className={cn("absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 transition-colors", filtersOpen && "text-blue-600 hover:text-blue-700 dark:text-blue-400")} aria-label="Search filters"><SlidersHorizontal className="h-5 w-5" /></button>
+                <div className="relative flex items-center w-full">
+                  <Search className="absolute left-4 h-4.5 w-4.5 text-slate-500 dark:text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchValue}
+                    onFocus={() => { if (searchValue.trim().length >= 2) setLiveSearchOpen(true) }}
+                    onChange={(event) => setSearchValue(event.target.value)}
+                    placeholder="Search in Drive (files, folders, docs...)"
+                    className="h-12 w-full pl-11 pr-20 rounded-full border border-transparent bg-slate-100/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 text-sm font-medium shadow-sm transition-all focus:bg-white dark:focus:bg-[#0f172a] focus:border-blue-500 focus:ring-4 focus:ring-blue-500/15 outline-none"
+                  />
+                  <div className="absolute right-2.5 flex items-center gap-1">
+                    {searchValue && (
+                      <button
+                        type="button"
+                        onClick={() => { setSearchValue(''); setLiveSearchOpen(false) }}
+                        className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                        aria-label="Clear search"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setFiltersOpen(!filtersOpen)}
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer",
+                        filtersOpen && "text-blue-600 bg-blue-100 dark:bg-blue-900/50 dark:text-blue-400"
+                      )}
+                      aria-label="Search filters"
+                    >
+                      <SlidersHorizontal className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
               </form>
 
               {/* Live search dropdown popover */}
               {liveSearchOpen && (liveResults.folders.length > 0 || liveResults.files.length > 0 || liveLoading) && (
-                <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f172a] shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
-                  <div className="p-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/80 flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
-                    <span>Instant Search Suggestions</span>
+                <div className="absolute left-0 right-0 top-14 z-50 overflow-hidden rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f172a] shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/80 flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+                    <span>Search Suggestions</span>
                     {liveLoading && <span className="text-blue-600 dark:text-blue-400 animate-pulse">Searching...</span>}
                   </div>
                   <div className="max-h-80 overflow-y-auto p-2 space-y-1">
@@ -675,8 +771,8 @@ export function DriveLayout() {
                       </div>
                     )}
                   </div>
-                  <div className="p-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-end">
-                    <button type="button" onClick={applyFilters} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline px-2 py-1">
+                  <div className="p-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-end">
+                    <button type="button" onClick={applyFilters} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline px-2 py-1 cursor-pointer">
                       Press Enter to see all results →
                     </button>
                   </div>
@@ -684,10 +780,10 @@ export function DriveLayout() {
               )}
 
               {filtersOpen && (
-                <div className="absolute left-0 right-0 top-12 z-50 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f172a] p-5 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute left-0 right-0 top-14 z-50 rounded-[28px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f172a] p-5 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                     <span className="text-sm font-extrabold text-slate-950 dark:text-white">Advanced Search Filters</span>
-                    <button type="button" onClick={clearFilters} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">Clear All</button>
+                    <button type="button" onClick={clearFilters} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">Clear All</button>
                   </div>
 
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -765,30 +861,33 @@ export function DriveLayout() {
       </div>
 
       {uploadProgress.open ? (
-        <div className="fixed inset-x-3 bottom-3 z-[70] max-h-[70dvh] overflow-hidden rounded-2xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-800 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(420px,calc(100vw-2.5rem))] floating-upload-panel">
+        <div className="fixed inset-x-3 bottom-3 z-[70] max-h-[70dvh] overflow-hidden rounded-[24px] border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-800 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(420px,calc(100vw-2.5rem))] floating-upload-panel animate-in slide-in-from-bottom-3 duration-200">
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/90 px-4 py-3">
             <div className="flex items-center gap-2 font-extrabold text-sm text-slate-950 dark:text-white">
               {uploadProgress.status === 'done' ? <CheckCircle className="h-5 w-5 text-emerald-500" /> : uploadProgress.status === 'partial' || uploadProgress.status === 'error' ? <X className="h-5 w-5 text-red-500" /> : <Upload className="h-5 w-5 text-blue-600" />}
               {uploadProgress.status === 'done' ? 'Upload complete' : uploadProgress.status === 'partial' ? 'Upload completed with errors' : uploadProgress.status === 'error' ? 'Upload failed' : uploadProgress.percent >= 99 ? 'Processing on server' : 'Uploading files'}
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" onClick={() => setUploadProgressCollapsed(!uploadProgressCollapsed)}><ChevronDown className={cn("h-4 w-4 transition-transform", uploadProgressCollapsed && "rotate-180")} /></Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" onClick={() => setUploadProgress((current) => ({ ...current, open: false }))}><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" onClick={() => setUploadProgressCollapsed(!uploadProgressCollapsed)}><ChevronDown className={cn("h-4 w-4 transition-transform", uploadProgressCollapsed && "rotate-180")} /></Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white" onClick={() => setUploadProgress((current) => ({ ...current, open: false }))}><X className="h-4 w-4" /></Button>
             </div>
           </div>
           {!uploadProgressCollapsed && (
-            <div className="p-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <p className="truncate font-semibold text-slate-900 dark:text-slate-100">{uploadProgress.fileName}</p>
-                <span className="text-slate-500 dark:text-slate-400 font-bold">{uploadProgress.percent}%</span>
-              </div>
-              <div className="mt-3 h-2 rounded-full bg-slate-100 dark:bg-slate-800">
-                <div className={uploadProgress.status === 'error' || uploadProgress.status === 'partial' ? 'h-full rounded-full bg-red-500' : uploadProgress.status === 'done' ? 'h-full rounded-full bg-emerald-500' : 'h-full rounded-full bg-blue-600'} style={{ width: `${uploadProgress.percent}%` }} />
+            <div className="p-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 space-y-4">
+              <div>
+                <div className="flex items-center justify-between gap-3 text-sm mb-2">
+                  <p className="truncate font-semibold text-slate-900 dark:text-slate-100">{uploadProgress.fileName}</p>
+                  <span className="text-blue-600 dark:text-blue-400 font-bold">{uploadProgress.percent}%</span>
+                </div>
+                <md-linear-progress
+                  value={uploadProgress.percent / 100}
+                  indeterminate={uploadProgress.percent >= 99 && uploadProgress.status !== 'done' ? true : undefined}
+                />
               </div>
               {uploadProgress.files.length > 0 ? (
-                <div className="mt-4 grid max-h-64 gap-3 overflow-y-auto pr-1 text-slate-950 dark:text-slate-100">
+                <div className="grid max-h-64 gap-2.5 overflow-y-auto pr-1 text-slate-950 dark:text-slate-100">
                   {uploadProgress.files.map((file, index) => (
-                    <div key={`${file.name}-${file.size}-${index}`} className="grid gap-1 rounded-xl bg-slate-50 dark:bg-slate-800/80 p-3 border border-slate-100 dark:border-slate-700/60">
+                    <div key={`${file.name}-${file.size}-${index}`} className="grid gap-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 p-3 border border-slate-100 dark:border-slate-700/60">
                       <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
                         <p className="min-w-0 flex-1 truncate font-semibold text-slate-900 dark:text-slate-100" title={file.name}>{file.name}</p>
                         <span className="shrink-0 text-xs font-bold text-slate-500 dark:text-slate-400">{file.percent}%</span>
@@ -806,9 +905,10 @@ export function DriveLayout() {
                           </span>
                         </div>
                       </div>
-                      <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
-                        <div className={file.status === 'error' ? 'h-full rounded-full bg-red-500' : file.status === 'done' ? 'h-full rounded-full bg-emerald-500' : 'h-full rounded-full bg-blue-600'} style={{ width: `${file.percent}%` }} />
-                      </div>
+                      <md-linear-progress
+                        value={file.percent / 100}
+                        indeterminate={file.percent >= 99 && file.status !== 'done' ? true : undefined}
+                      />
                     </div>
                   ))}
                 </div>

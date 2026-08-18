@@ -51,21 +51,22 @@ export function DriveAccountTabs({
           type="button"
           onClick={() => onSelectAccount(null)}
           className={cn(
-            'group flex shrink-0 items-center gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left transition-all duration-150',
+            'group relative flex shrink-0 items-center gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left transition-all duration-150 overflow-hidden cursor-pointer',
             selectedAccountId === null
               ? 'border-blue-500 bg-blue-50/80 dark:border-blue-500/80 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 shadow-sm'
               : 'border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-850'
           )}
         >
+          <md-ripple />
           <div className={cn(
-            'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors',
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors relative z-10',
             selectedAccountId === null
               ? 'bg-blue-600 text-white'
               : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 group-hover:bg-blue-50 dark:group-hover:bg-slate-700'
           )}>
             <HardDrive className="h-4 w-4" />
           </div>
-          <div>
+          <div className="relative z-10">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-extrabold">All Storage</span>
               <span className="rounded-md bg-blue-100 dark:bg-blue-900/60 px-1.5 py-0.2 text-[10px] font-bold text-blue-700 dark:text-blue-300">
@@ -91,14 +92,15 @@ export function DriveAccountTabs({
               type="button"
               onClick={() => onSelectAccount(account.id)}
               className={cn(
-                'group flex shrink-0 items-center gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left transition-all duration-150',
+                'group relative flex shrink-0 items-center gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left transition-all duration-150 overflow-hidden cursor-pointer',
                 isSelected
                   ? 'border-blue-500 bg-blue-50/80 dark:border-blue-500/80 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 shadow-sm'
                   : 'border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-850'
               )}
             >
+              <md-ripple />
               <div className={cn(
-                'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors',
+                'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors relative z-10',
                 isSelected
                   ? 'bg-white dark:bg-slate-800 shadow-sm'
                   : 'bg-slate-100 dark:bg-slate-800/80'

@@ -101,14 +101,15 @@ export function FileGrid({
             onContextMenu={(event) => onFileContextMenu?.(event, file)}
             className={cn(
               selected
-                ? 'relative cursor-grab active:cursor-grabbing overflow-hidden file-selected shadow-sm transition hover:-translate-y-0.5 hover:shadow-md'
-                : 'relative cursor-grab active:cursor-grabbing overflow-hidden transition hover:-translate-y-0.5 hover:shadow-md',
+                ? 'relative cursor-grab active:cursor-grabbing overflow-hidden file-selected shadow-sm transition hover:-translate-y-0.5 hover:shadow-md rounded-2xl'
+                : 'relative cursor-grab active:cursor-grabbing overflow-hidden transition hover:-translate-y-0.5 hover:shadow-md rounded-2xl',
               cfg.card
             )}
           >
-            <div className="flex items-start justify-between gap-2">
-              <input type="checkbox" className={cn("shrink-0 accent-blue-600 rounded", cfg.checkbox)} checked={selected} onChange={() => onToggleFile?.(file)} onClick={(event) => event.stopPropagation()} />
-              <button className={cn("flex shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors", cfg.menuBtn)} onClick={(event) => { event.stopPropagation(); onFileContextMenu?.(event, file) }} aria-label={`Open ${file.name} menu`}><MoreVertical className="h-4 w-4" /></button>
+            <md-ripple />
+            <div className="flex items-start justify-between gap-2 relative z-10">
+              <input type="checkbox" className={cn("shrink-0 accent-blue-600 rounded cursor-pointer", cfg.checkbox)} checked={selected} onChange={() => onToggleFile?.(file)} onClick={(event) => event.stopPropagation()} />
+              <button className={cn("flex shrink-0 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer", cfg.menuBtn)} onClick={(event) => { event.stopPropagation(); onFileContextMenu?.(event, file) }} aria-label={`Open ${file.name} menu`}><MoreVertical className="h-4 w-4" /></button>
             </div>
 
             <div className="flex justify-center mt-2">

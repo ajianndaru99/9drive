@@ -82,12 +82,13 @@ export function FolderGrid({
             if (fileId && folder.id) onDropItem?.(fileId, folder.id)
           }}
           className={cn(
-            'group relative flex cursor-pointer flex-col items-center justify-center transition hover:-translate-y-1 hover:shadow-xl',
+            'group relative flex cursor-pointer flex-col items-center justify-center transition hover:-translate-y-1 hover:shadow-xl rounded-2xl overflow-hidden',
             cfg.card,
           )}
         >
+          <md-ripple />
           <button
-            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 sm:right-3 sm:top-3 transition-colors"
+            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 sm:right-3 sm:top-3 transition-colors z-10 cursor-pointer"
             onClick={(event) => { event.stopPropagation(); onFolderMenu?.(event, folder) }}
             aria-label={`Open ${folder.name} menu`}
           >

@@ -778,8 +778,27 @@ export function AllFilesPage() {
     function handleUploadCompleted() {
       loadAll().catch(() => undefined)
     }
+    function handleTriggerUpload() {
+      setUploadOpen(true)
+    }
+    function handleTriggerNewFolder() {
+      setFolderOpen(true)
+    }
+    function handleTriggerSync() {
+      syncGoogleDrive('full')
+    }
+
     window.addEventListener('9drive:upload-completed', handleUploadCompleted)
-    return () => window.removeEventListener('9drive:upload-completed', handleUploadCompleted)
+    window.addEventListener('9drive:trigger-upload', handleTriggerUpload)
+    window.addEventListener('9drive:trigger-new-folder', handleTriggerNewFolder)
+    window.addEventListener('9drive:trigger-sync', handleTriggerSync)
+
+    return () => {
+      window.removeEventListener('9drive:upload-completed', handleUploadCompleted)
+      window.removeEventListener('9drive:trigger-upload', handleTriggerUpload)
+      window.removeEventListener('9drive:trigger-new-folder', handleTriggerNewFolder)
+      window.removeEventListener('9drive:trigger-sync', handleTriggerSync)
+    }
   }, [activeFolderId])
 
   useEffect(() => {

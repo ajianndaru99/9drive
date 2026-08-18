@@ -253,7 +253,7 @@ export function QuotaTrackerPage() {
                   <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300"><span className={cn('h-2.5 w-2.5 rounded-full', color.split(' ')[0])} />Storage Usage</span>
                   <span className="text-slate-900 dark:text-white">{percent}%</span>
                 </div>
-                <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden"><div className={cn('h-full rounded-full', color.split(' ')[0])} style={{ width: `${percent}%` }} /></div>
+                <md-linear-progress value={percent / 100} />
                 <div className="mt-3 flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400"><span>{formatBytes(account.storageAccount?.usedBytes)} / {storageLimitLabel(account)}</span><span>Available {availableLabel(account)}</span></div>
               </div>
             </Card>
