@@ -545,19 +545,43 @@ export function AllFilesPage() {
     setSearchParams(searchQuery ? { q: searchQuery } : {})
   }
 
-  async function getOrFetchPreview(fileId: string) {
+  async function getOrFetchPreview(fileId: string, mimeType?: string) {
     const cached = previewCache.current.get(fileId)
     if (cached && Date.now() - cached.timestamp < 8 * 60_000) {
       return cached
     }
-    const [data, viewUrlData] = await Promise.all([
-      apiFetch<{ path?: string; thumbnailPath?: string; url: string }>(`/files/${fileId}/preview-token`, { method: 'POST' }),
-      apiFetch<{ url: string | null }>(`/files/${fileId}/view-url`).catch(() => ({ url: null })),
-    ])
+
+    const isImage = mimeType?.startsWith('image/')
+
+    // For images: skip the slow view-url call (not needed for photo preview)
+    // For non-images: fetch view-url in parallel for Google Drive viewer link
+    const tokenPromise = apiFetch<{
+      path?: string;
+      thumbnailPath?: string;
+      directThumbnailUrl?: string;
+      url: string;
+    }>(`/files/${fileId}/preview-token`, { method: 'POST' })
+
+    const viewUrlPromise = isImage
+      ? Promise.resolve({ url: null })
+      : apiFetch<{ url: string | null }>(`/files/${fileId}/view-url`).catch(() => ({ url: null }))
+
+    const [data, viewUrlData] = await Promise.all([tokenPromise, viewUrlPromise])
+
     const previewPath = data.path ?? new URL(data.url).pathname
     const fullUrl = `${API_URL}${previewPath}`
-    const thumbUrl = data.thumbnailPath ? `${API_URL}${data.thumbnailPath}` : undefined
-    const res = { fullUrl, thumbUrl, gdriveUrl: viewUrlData?.url ?? undefined, timestamp: Date.now() }
+
+    // For images: prefer the direct Google CDN URL (browser loads directly, no backend proxy)
+    // Falls back to backend-proxied thumbnail, then full stream
+    const thumbUrl = data.directThumbnailUrl
+      || (data.thumbnailPath ? `${API_URL}${data.thumbnailPath}` : undefined)
+
+    const res = {
+      fullUrl,
+      thumbUrl,
+      gdriveUrl: viewUrlData?.url ?? undefined,
+      timestamp: Date.now(),
+    }
     previewCache.current.set(fileId, res)
     return res
   }
@@ -565,7 +589,7 @@ export function AllFilesPage() {
   function prefetchPreview(file: FileItem) {
     if (!file?.id) return
     if (previewCache.current.has(file.id)) return
-    getOrFetchPreview(file.id).catch(() => undefined)
+    getOrFetchPreview(file.id, file.mimeType).catch(() => undefined)
   }
 
   async function viewFile(fileOverride?: FileItem) {
@@ -595,7 +619,7 @@ export function AllFilesPage() {
     setPreviewGdriveUrl('')
 
     try {
-      const res = await getOrFetchPreview(target.id)
+      const res = await getOrFetchPreview(target.id, target.mimeType)
       setPreviewUrl(isImage && res.thumbUrl ? res.thumbUrl : res.fullUrl)
       setPreviewFullUrl(res.fullUrl)
       if (res.gdriveUrl) setPreviewGdriveUrl(res.gdriveUrl)
