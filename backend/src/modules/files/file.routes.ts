@@ -7,7 +7,7 @@ import { requireAuth, type AuthRequest } from '../../middleware/auth.middleware.
 import { hashToken, randomToken } from '../../utils/crypto.js'
 import { getAuthedGoogleClient, syncGoogleAppFolderFiles, syncGoogleFullDrive, syncGoogleQuota, transferFileBetweenAccounts } from '../google/google.service.js'
 import { deleteS3Object, syncS3Quota, createS3Client, getS3ConfigForAccount, syncS3BucketFiles } from '../s3/s3.service.js'
-import { streamProviderFile } from './stream-file.js'
+import { streamProviderFile, streamProviderThumbnail } from './stream-file.js'
 import { googleDownloadExportMimeTypes, normalizeHeaders, withExtension } from './stream-google-file.js'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { Readable } from 'node:stream'
@@ -19,12 +19,17 @@ export const fileRouter = Router()
 fileRouter.get('/preview/:token', async (req, res, next) => {
   try {
     const token = String(req.params.token)
+    const thumb = req.query.thumb === '1' || req.query.thumb === 'true'
+    const size = req.query.size ? Math.min(Math.max(Number(req.query.size), 100), 2000) : 1200
     const preview = await prisma.filePreviewToken.findFirst({
       where: { tokenHash: hashToken(token), expiresAt: { gt: new Date() } },
       include: { file: { include: { connectedAccount: true } } },
     })
     if (!preview || preview.file.status !== 'active') return res.status(404).json({ code: 'PREVIEW_NOT_FOUND', message: 'Preview token not found.' })
     await prisma.file.update({ where: { id: preview.file.id }, data: { lastOpenedAt: new Date() } }).catch(() => undefined)
+    if (thumb && preview.file.mimeType.startsWith('image/')) {
+      return streamProviderThumbnail(preview.file, res, size)
+    }
     return streamProviderFile(preview.file, req.headers.range, res, { disposition: 'inline' })
   } catch (error) {
     return next(error)
@@ -502,7 +507,27 @@ fileRouter.post('/:id/preview-token', async (req: AuthRequest, res, next) => {
     const token = randomToken(32)
     await prisma.filePreviewToken.create({ data: { fileId: file.id, userId: req.user!.id, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + 10 * 60_000) } })
     const path = `/files/preview/${token}`
-    return res.status(201).json({ path, url: `${req.protocol}://${req.get('host')}${path}` })
+    const thumbnailPath = file.mimeType.startsWith('image/') ? `/files/preview/${token}?thumb=1` : undefined
+    return res.status(201).json({
+      path,
+      thumbnailPath,
+      url: `${req.protocol}://${req.get('host')}${path}`,
+      thumbnailUrl: thumbnailPath ? `${req.protocol}://${req.get('host')}${thumbnailPath}` : undefined,
+    })
+  } catch (error) {
+    return next(error)
+  }
+})
+
+fileRouter.get('/:id/thumbnail', async (req: AuthRequest, res, next) => {
+  try {
+    const fileId = String(req.params.id)
+    const size = req.query.size ? Math.min(Math.max(Number(req.query.size), 100), 2000) : 800
+    const file = await prisma.file.findFirstOrThrow({
+      where: { id: fileId, userId: req.user!.id, status: 'active' },
+      include: { connectedAccount: true },
+    })
+    return streamProviderThumbnail(file, res, size)
   } catch (error) {
     return next(error)
   }

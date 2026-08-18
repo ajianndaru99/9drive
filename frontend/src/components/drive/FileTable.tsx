@@ -58,7 +58,8 @@ export function FileTable({
   onSort,
   onFileContextMenu,
   onToggleFile,
-  onToggleAll
+  onToggleAll,
+  onFileHover
 }: {
   files: FileItem[]
   mode?: 'default' | 'shared' | 'recent' | 'starred' | 'archived'
@@ -70,6 +71,7 @@ export function FileTable({
   onFileContextMenu?: (event: MouseEvent<HTMLElement>, file: FileItem) => void
   onToggleFile?: (file: FileItem) => void
   onToggleAll?: () => void
+  onFileHover?: (file: FileItem) => void
 }) {
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null)
 
@@ -95,6 +97,7 @@ export function FileTable({
                 event.dataTransfer.effectAllowed = 'move'
               }}
               onClick={() => onToggleFile?.(file)}
+              onPointerEnter={() => onFileHover?.(file)}
               onContextMenu={(event) => onFileContextMenu?.(event, file)}
               className={cn(
                 'overflow-hidden rounded-2xl border p-4 shadow-sm cursor-grab active:cursor-grabbing transition-all',
@@ -208,6 +211,7 @@ export function FileTable({
                 }}
                 onContextMenu={(event) => onFileContextMenu?.(event, file)}
                 onClick={() => onToggleFile?.(file)}
+                onPointerEnter={() => onFileHover?.(file)}
                 className={cn(
                   'group transition-colors duration-150 cursor-grab active:cursor-grabbing text-[13px]',
                   selectedFileIds.has(file.id ?? '')

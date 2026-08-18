@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { prisma } from '../../config/prisma.js'
 import { hashToken } from '../../utils/crypto.js'
-import { streamProviderFile } from '../files/stream-file.js'
+import { streamProviderFile, streamProviderThumbnail } from '../files/stream-file.js'
 
 export const publicRouter = Router()
 
@@ -35,6 +35,11 @@ publicRouter.get('/files/:token/download', async (req, res, next) => {
 publicRouter.get('/files/:token/preview', async (req, res, next) => {
   try {
     const file = await findSharedFile(String(req.params.token))
+    const thumb = req.query.thumb === '1' || req.query.thumb === 'true'
+    if (thumb && file.mimeType.startsWith('image/')) {
+      const size = req.query.size ? Math.min(Math.max(Number(req.query.size), 100), 2000) : 1200
+      return streamProviderThumbnail(file, res, size)
+    }
     return streamProviderFile(file, req.headers.range, res, { disposition: 'inline' })
   } catch (error) {
     return next(error)

@@ -87,10 +87,12 @@ export function AllFilesPage() {
   const [shareUrl, setShareUrl] = useState('')
   const [copiedShareLink, setCopiedShareLink] = useState(false)
   const [previewUrl, setPreviewUrl] = useState('')
+  const [previewFullUrl, setPreviewFullUrl] = useState('')
   const [previewError, setPreviewError] = useState('')
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewGdriveUrl, setPreviewGdriveUrl] = useState('')
   const [previewTextContent, setPreviewTextContent] = useState('')
+  const previewCache = useRef<Map<string, { fullUrl: string; thumbUrl?: string; gdriveUrl?: string; timestamp: number }>>(new Map())
   const [files, setFiles] = useState<FileItem[]>([])
   const [folders, setFolders] = useState<FolderItem[]>([])
   const [allFolders, setAllFolders] = useState<FolderItem[]>([])
@@ -543,29 +545,65 @@ export function AllFilesPage() {
     setSearchParams(searchQuery ? { q: searchQuery } : {})
   }
 
-  async function viewFile() {
-    if (!activeFile?.id) return
-    setPreviewUrl('')
+  async function getOrFetchPreview(fileId: string) {
+    const cached = previewCache.current.get(fileId)
+    if (cached && Date.now() - cached.timestamp < 8 * 60_000) {
+      return cached
+    }
+    const [data, viewUrlData] = await Promise.all([
+      apiFetch<{ path?: string; thumbnailPath?: string; url: string }>(`/files/${fileId}/preview-token`, { method: 'POST' }),
+      apiFetch<{ url: string | null }>(`/files/${fileId}/view-url`).catch(() => ({ url: null })),
+    ])
+    const previewPath = data.path ?? new URL(data.url).pathname
+    const fullUrl = `${API_URL}${previewPath}`
+    const thumbUrl = data.thumbnailPath ? `${API_URL}${data.thumbnailPath}` : undefined
+    const res = { fullUrl, thumbUrl, gdriveUrl: viewUrlData?.url ?? undefined, timestamp: Date.now() }
+    previewCache.current.set(fileId, res)
+    return res
+  }
+
+  function prefetchPreview(file: FileItem) {
+    if (!file?.id) return
+    if (previewCache.current.has(file.id)) return
+    getOrFetchPreview(file.id).catch(() => undefined)
+  }
+
+  async function viewFile(fileOverride?: FileItem) {
+    const target = fileOverride || activeFile
+    if (!target?.id) return
+    if (fileOverride) setActiveFile(fileOverride)
+
+    const isImage = target.mimeType?.startsWith('image/')
     setPreviewError('')
-    setPreviewGdriveUrl('')
     setPreviewTextContent('')
-    setPreviewLoading(true)
     setPreviewOpen(true)
     setContextMenu({ x: 0, y: 0, file: null })
-    try {
-      const [data, viewUrlData] = await Promise.all([
-        apiFetch<{ path?: string; url: string }>(`/files/${activeFile.id}/preview-token`, { method: 'POST' }),
-        apiFetch<{ url: string | null }>(`/files/${activeFile.id}/view-url`).catch(() => ({ url: null })),
-      ])
-      const previewPath = data.path ?? new URL(data.url).pathname
-      const fullUrl = `${API_URL}${previewPath}`
-      setPreviewUrl(fullUrl)
-      if (viewUrlData?.url) setPreviewGdriveUrl(viewUrlData.url)
 
-      const kind = getPreviewKind(activeFile.mimeType, activeFile.name)
+    // Check if token already prefetched in memory for instant preview
+    const cached = previewCache.current.get(target.id)
+    if (cached && Date.now() - cached.timestamp < 8 * 60_000) {
+      setPreviewUrl(isImage && cached.thumbUrl ? cached.thumbUrl : cached.fullUrl)
+      setPreviewFullUrl(cached.fullUrl)
+      if (cached.gdriveUrl) setPreviewGdriveUrl(cached.gdriveUrl)
+      setPreviewLoading(false)
+      return
+    }
+
+    setPreviewLoading(true)
+    setPreviewUrl('')
+    setPreviewFullUrl('')
+    setPreviewGdriveUrl('')
+
+    try {
+      const res = await getOrFetchPreview(target.id)
+      setPreviewUrl(isImage && res.thumbUrl ? res.thumbUrl : res.fullUrl)
+      setPreviewFullUrl(res.fullUrl)
+      if (res.gdriveUrl) setPreviewGdriveUrl(res.gdriveUrl)
+
+      const kind = getPreviewKind(target.mimeType, target.name)
       if (kind === 'text') {
-        fetch(fullUrl)
-          .then((res) => (res.ok ? res.text() : ''))
+        fetch(res.fullUrl)
+          .then((r) => (r.ok ? r.text() : ''))
           .then((txt) => setPreviewTextContent(txt.slice(0, 100_000)))
           .catch(() => undefined)
       }
@@ -906,7 +944,7 @@ export function AllFilesPage() {
       ) : (
         <Card className="mt-3 p-4 sm:p-5 bg-white dark:bg-[#0c1220] border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
           {fileViewMode === 'grid' ? (
-            <FileGrid files={sortedFiles} selectedFileIds={selectedFileIds} sizeScale={folderSizeScale} onToggleFile={toggleFileSelection} onFileContextMenu={openContext} />
+            <FileGrid files={sortedFiles} selectedFileIds={selectedFileIds} sizeScale={folderSizeScale} onToggleFile={toggleFileSelection} onFileContextMenu={openContext} onFileHover={prefetchPreview} />
           ) : (
             <FileTable
               files={sortedFiles}
@@ -918,6 +956,7 @@ export function AllFilesPage() {
               onToggleFile={toggleFileSelection}
               onToggleAll={toggleAllVisibleFiles}
               onFileContextMenu={openContext}
+              onFileHover={prefetchPreview}
             />
           )}
         </Card>
@@ -1100,6 +1139,16 @@ export function AllFilesPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {activePreviewKind === 'image' && previewFullUrl && previewUrl !== previewFullUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPreviewUrl(previewFullUrl)}
+                className="h-7 text-xs text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+              >
+                HD Full Res
+              </Button>
+            )}
             {previewGdriveUrl && (
               <a
                 href={previewGdriveUrl}
@@ -1151,7 +1200,20 @@ export function AllFilesPage() {
           ) : null}
 
           {!previewLoading && !previewError && activePreviewKind === 'image' && previewUrl ? (
-            <img src={previewUrl} alt={activeFile?.name ?? 'File preview'} className="max-h-full max-w-full object-contain" onError={() => setPreviewError('Failed to load image preview.')} />
+            <div className="relative flex h-full w-full items-center justify-center p-2">
+              <img
+                src={previewUrl}
+                alt={activeFile?.name ?? 'File preview'}
+                className="max-h-full max-w-full rounded-lg object-contain transition-opacity duration-300 shadow-sm animate-in fade-in duration-200"
+                onError={() => {
+                  if (previewFullUrl && previewUrl !== previewFullUrl) {
+                    setPreviewUrl(previewFullUrl)
+                  } else {
+                    setPreviewError('Failed to load image preview.')
+                  }
+                }}
+              />
+            </div>
           ) : null}
 
           {!previewLoading && !previewError && activePreviewKind === 'video' && previewUrl ? (

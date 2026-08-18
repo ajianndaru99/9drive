@@ -96,3 +96,52 @@ export async function streamGoogleFile(file: FileWithAccount, range: string | un
   })
 }
 
+export async function streamGoogleThumbnail(
+  file: FileWithAccount,
+  res: Response,
+  size = 1200
+) {
+  try {
+    const auth = await getAuthedGoogleClient(file.connectedAccount)
+    const { google } = await import('googleapis')
+    const drive = google.drive({ version: 'v3', auth })
+    const metadata = await drive.files.get({
+      fileId: file.providerFileId,
+      fields: 'thumbnailLink,hasThumbnail',
+    })
+
+    if (metadata.data.thumbnailLink) {
+      let thumbUrl = metadata.data.thumbnailLink
+      if (thumbUrl.includes('=s')) {
+        thumbUrl = thumbUrl.replace(/=s\d+/, `=s${size}`)
+      } else {
+        thumbUrl = `${thumbUrl}=s${size}`
+      }
+
+      const headers = normalizeHeaders(await auth.getRequestHeaders())
+      const response = await fetch(thumbUrl, { headers })
+
+      if (response.ok && response.body) {
+        res.status(response.status)
+        res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg')
+        res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800')
+        const contentLength = response.headers.get('content-length')
+        if (contentLength) res.setHeader('Content-Length', contentLength)
+
+        const nodeStream = Readable.fromWeb(response.body as any)
+        nodeStream.pipe(res)
+        res.on('close', () => {
+          nodeStream.destroy()
+        })
+        return
+      }
+    }
+  } catch {
+    // If thumbnail fetching fails, fallback to full image stream
+  }
+
+  // Fallback to standard stream if thumbnail not available
+  return streamGoogleFile(file, undefined, res, { disposition: 'inline' })
+}
+
+

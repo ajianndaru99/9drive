@@ -79,13 +79,15 @@ export function FileGrid({
   selectedFileIds = new Set<string>(),
   sizeScale = 'md',
   onFileContextMenu,
-  onToggleFile
+  onToggleFile,
+  onFileHover
 }: {
   files: FileItem[]
   selectedFileIds?: Set<string>
   sizeScale?: FileSizeScale
   onFileContextMenu?: (event: MouseEvent<HTMLElement>, file: FileItem) => void
   onToggleFile?: (file: FileItem) => void
+  onFileHover?: (file: FileItem) => void
 }) {
   const cfg = scaleConfig[sizeScale]
   return (
@@ -98,6 +100,7 @@ export function FileGrid({
             draggable
             onDragStart={(event) => { event.dataTransfer.setData('text/plain', file.id ?? ''); event.dataTransfer.effectAllowed = 'move' }}
             onClick={() => onToggleFile?.(file)}
+            onPointerEnter={() => onFileHover?.(file)}
             onContextMenu={(event) => onFileContextMenu?.(event, file)}
             className={cn(
               selected
