@@ -505,44 +505,15 @@ fileRouter.post('/:id/preview-token', async (req: AuthRequest, res, next) => {
     const fileId = String(req.params.id)
     const file = await prisma.file.findFirstOrThrow({
       where: { id: fileId, userId: req.user!.id, status: 'active' },
-      include: { connectedAccount: true },
     })
     const token = randomToken(32)
     await prisma.filePreviewToken.create({ data: { fileId: file.id, userId: req.user!.id, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + 10 * 60_000) } })
     const path = `/files/preview/${token}`
     const thumbnailPath = file.mimeType.startsWith('image/') ? `/files/preview/${token}?thumb=1` : undefined
 
-    // For images on Google Drive, resolve a direct CDN thumbnail URL so the
-    // browser can load it directly without proxying through the backend.
-    // lh3.googleusercontent.com URLs are publicly accessible once generated.
-    let directThumbnailUrl: string | undefined
-    if (file.mimeType.startsWith('image/') && file.provider !== 's3') {
-      try {
-        const auth = await getAuthedGoogleClient(file.connectedAccount)
-        const driveApi = google.drive({ version: 'v3', auth })
-        const metadata = await driveApi.files.get({
-          fileId: file.providerFileId,
-          fields: 'thumbnailLink',
-        })
-        if (metadata.data.thumbnailLink) {
-          let thumbUrl = metadata.data.thumbnailLink
-          // Upgrade thumbnail resolution to 1600px (high quality, still small file)
-          if (thumbUrl.includes('=s')) {
-            thumbUrl = thumbUrl.replace(/=s\d+/, '=s1600')
-          } else {
-            thumbUrl = `${thumbUrl}=s1600`
-          }
-          directThumbnailUrl = thumbUrl
-        }
-      } catch {
-        // If direct thumbnail fetch fails, frontend will use the proxied path
-      }
-    }
-
     return res.status(201).json({
       path,
       thumbnailPath,
-      directThumbnailUrl,
       url: `${req.protocol}://${req.get('host')}${path}`,
       thumbnailUrl: thumbnailPath ? `${req.protocol}://${req.get('host')}${thumbnailPath}` : undefined,
     })

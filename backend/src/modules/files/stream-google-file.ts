@@ -118,11 +118,11 @@ export async function streamGoogleThumbnail(
         thumbUrl = `${thumbUrl}=s${size}`
       }
 
-      const headers = normalizeHeaders(await auth.getRequestHeaders())
-      const response = await fetch(thumbUrl, { headers })
+      // Fetch lh3.googleusercontent.com without Authorization header (Google CDN rejects Bearer tokens)
+      const response = await fetch(thumbUrl)
 
       if (response.ok && response.body) {
-        res.status(response.status)
+        res.status(200)
         res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg')
         res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800')
         const contentLength = response.headers.get('content-length')
