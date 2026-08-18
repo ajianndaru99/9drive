@@ -12,6 +12,7 @@ import {
   Menu,
   Moon,
   MoreVertical,
+  Plus,
   RefreshCw,
   Search,
   Settings,
@@ -32,6 +33,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BrandLogo } from '@/components/drive/BrandLogo'
+import { MobileBottomNav } from '@/components/drive/MobileBottomNav'
+import { MobileBottomSheet } from '@/components/drive/MobileBottomSheet'
 import { apiFetch, formatBytes } from '@/lib/api'
 import { useUpload } from '@/context/UploadContext'
 import { clearAuthSession, getStoredUser, updateStoredUser, type AuthUser } from '@/lib/auth'
@@ -430,6 +433,7 @@ export function DriveLayout() {
   const [headerActions, setHeaderActions] = useState<ReactNode>(null)
   const { uploadProgress, setUploadProgress, retryFailedUpload } = useUpload()
   const [uploadProgressCollapsed, setUploadProgressCollapsed] = useState(false)
+  const [mobileFabOpen, setMobileFabOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('9drive:theme')
     if (saved === 'light' || saved === 'dark') return saved
@@ -470,26 +474,6 @@ export function DriveLayout() {
     localStorage.setItem('9drive:theme', theme)
   }, [theme])
 
-  function toggleTheme() {
-    setTheme((t) => (t === 'light' ? 'dark' : 'light'))
-  }
-
-  async function loadSidebarStats() {
-    await Promise.all([
-      apiFetch<StorageSummary>('/storage/summary').then(setStorage),
-      apiFetch<StorageBreakdown>('/storage/breakdown').then(setBreakdown),
-    ])
-  }
-
-  async function loadConnectedAccounts() {
-    try {
-      const data = await apiFetch<{ accounts: ConnectedAccount[] }>('/connected-accounts')
-      setAccounts(data.accounts)
-    } catch (e) {
-      console.error('Failed to load accounts for filter dropdown', e)
-    }
-  }
-
   useEffect(() => {
     setSearchValue(searchParams.get('q') ?? '')
     setFilterKind(searchParams.get('kind') ?? '')
@@ -510,8 +494,33 @@ export function DriveLayout() {
     setFilterEndDate(rawEnd ? rawEnd.split('T')[0] : '')
   }, [searchParams])
 
-  async function logout() {
-    await apiFetch('/auth/logout', { method: 'POST' }).catch(() => undefined)
+  function toggleTheme() {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))
+  }
+
+  async function loadSidebarStats() {
+    try {
+      const [summaryData, breakdownData] = await Promise.all([
+        apiFetch<StorageSummary>('/storage/summary'),
+        apiFetch<StorageBreakdown>('/storage/breakdown'),
+      ])
+      setStorage(summaryData)
+      setBreakdown(breakdownData)
+    } catch {
+      // ignore
+    }
+  }
+
+  async function loadConnectedAccounts() {
+    try {
+      const data = await apiFetch<{ accounts: ConnectedAccount[] }>('/connected-accounts')
+      setAccounts(data.accounts)
+    } catch {
+      // ignore
+    }
+  }
+
+  function logout() {
     clearAuthSession()
     navigate('/login')
   }
@@ -658,7 +667,7 @@ export function DriveLayout() {
           </div>
           <Sidebar user={user} storage={storage} breakdown={breakdown} onLogout={logout} onNavigate={() => setSidebarOpen(false)} theme={theme} onToggleTheme={toggleTheme} />
         </div>
-        <section className="min-w-0 flex-1 p-4 sm:p-6 lg:h-screen lg:overflow-y-auto lg:p-8">
+        <section className="min-w-0 flex-1 p-4 sm:p-6 pb-28 lg:pb-8 lg:h-screen lg:overflow-y-auto lg:p-8">
           <header className="flex w-full min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center justify-between gap-3 lg:hidden">
               <div className="flex min-w-0 items-center gap-3">
@@ -860,8 +869,85 @@ export function DriveLayout() {
         </section>
       </div>
 
+      {/* Mobile Material 3 Floating Action Button (FAB) */}
+      <div className="fixed bottom-20 right-4 z-40 block lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileFabOpen(true)}
+          className="group relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-[0_4px_16px_rgba(37,99,235,0.4)] active:scale-95 transition-all duration-200 overflow-hidden cursor-pointer"
+          aria-label="Create new or upload"
+        >
+          <md-ripple />
+          <Plus className="h-7 w-7" />
+        </button>
+      </div>
+
+      {/* Mobile FAB Action Bottom Sheet */}
+      <MobileBottomSheet
+        open={mobileFabOpen}
+        onClose={() => setMobileFabOpen(false)}
+        title="Create & Upload"
+      >
+        <div className="grid gap-1.5 py-1">
+          <button
+            type="button"
+            onClick={() => {
+              setMobileFabOpen(false)
+              window.dispatchEvent(new Event('9drive:trigger-upload'))
+              if (location.pathname !== '/all-files') navigate('/all-files')
+            }}
+            className="flex w-full items-center gap-3.5 rounded-2xl px-4 py-3 text-left text-sm font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+              <Upload className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-extrabold text-sm text-slate-900 dark:text-white">Upload files</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Stream files to Google Drive</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMobileFabOpen(false)
+              window.dispatchEvent(new Event('9drive:trigger-new-folder'))
+              if (location.pathname !== '/all-files') navigate('/all-files')
+            }}
+            className="flex w-full items-center gap-3.5 rounded-2xl px-4 py-3 text-left text-sm font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-500">
+              <Folder className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-extrabold text-sm text-slate-900 dark:text-white">New folder</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Organize your files</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMobileFabOpen(false)
+              window.dispatchEvent(new Event('9drive:trigger-sync'))
+              if (location.pathname !== '/all-files') navigate('/all-files')
+            }}
+            className="flex w-full items-center gap-3.5 rounded-2xl px-4 py-3 text-left text-sm font-bold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+              <RefreshCw className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-extrabold text-sm text-slate-900 dark:text-white">Sync Google Drive</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Scan and refresh existing drive files</p>
+            </div>
+          </button>
+        </div>
+      </MobileBottomSheet>
+
+      {/* Material 3 Bottom Navigation Bar */}
+      <MobileBottomNav />
+
       {uploadProgress.open ? (
-        <div className="fixed inset-x-3 bottom-3 z-[70] max-h-[70dvh] overflow-hidden rounded-[24px] border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-800 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(420px,calc(100vw-2.5rem))] floating-upload-panel animate-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed inset-x-3 bottom-20 lg:bottom-5 z-[70] max-h-[70dvh] overflow-hidden rounded-[24px] border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-800 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl sm:inset-x-auto sm:right-5 sm:w-[min(420px,calc(100vw-2.5rem))] floating-upload-panel animate-in slide-in-from-bottom-3 duration-200">
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/90 px-4 py-3">
             <div className="flex items-center gap-2 font-extrabold text-sm text-slate-950 dark:text-white">
               {uploadProgress.status === 'done' ? <CheckCircle className="h-5 w-5 text-emerald-500" /> : uploadProgress.status === 'partial' || uploadProgress.status === 'error' ? <X className="h-5 w-5 text-red-500" /> : <Upload className="h-5 w-5 text-blue-600" />}

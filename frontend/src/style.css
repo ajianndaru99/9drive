@@ -165,3 +165,18 @@ button, input, select, textarea {
 .drive-preview-video-shell video {
   object-fit: contain;
 }
+
+/* Safe area helpers for modern mobile devices (Android gesture bar & iOS home indicator) */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Touch targets & tap highlight removal for mobile */
+@media (max-width: 1024px) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
