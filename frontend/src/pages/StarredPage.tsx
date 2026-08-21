@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/drive/PageHeader'
 import { SortControl, type SortField, type SortState, sortFilesList } from '@/components/drive/SortControl'
 import { Button } from '@/components/ui/button'
 import { DummyModal } from '@/components/drive/DummyModal'
-import { apiFetch, formatBytes, formatDate } from '@/lib/api'
+import { apiFetch, API_URL, formatBytes, formatDate } from '@/lib/api'
 import type { FileItem, FolderItem } from '@/data/drive-data'
 
 type BackendFile = { id: string; name: string; mimeType: string; sizeBytes: string; createdAt: string; updatedAt: string; isStarred?: boolean; folderId?: string | null; folder?: { id: string; name: string } | null; connectedAccount?: { email: string; provider: string } }
@@ -86,8 +86,10 @@ export function StarredPage() {
     if (!file.id) return
     setActiveFile(file)
     try {
-      const data = await apiFetch<{ path: string }>(`/files/${file.id}/preview-token`, { method: 'POST' })
-      setPreviewUrl(data.path)
+      const data = await apiFetch<{ path?: string; url?: string }>(`/files/${file.id}/preview-token`, { method: 'POST' })
+      const previewPath = data.path ?? (data.url ? new URL(data.url).pathname : '')
+      const fullUrl = previewPath.startsWith('http') ? previewPath : `${API_URL}${previewPath}`
+      setPreviewUrl(fullUrl)
       setPreviewOpen(true)
     } catch (err) {
       console.error('Failed to open preview', err)

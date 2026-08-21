@@ -578,14 +578,19 @@ export function AllFilesPage() {
 
   async function viewFile(fileOverride?: FileItem) {
     const target = fileOverride || activeFile
-    if (!target?.id) return
-    if (fileOverride) setActiveFile(fileOverride)
+    if (!target) return
+    setActiveFile(target)
 
-    const isImage = target.mimeType?.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(target.name.toLowerCase().split('.').pop() || '')
+    const isImage = target.mimeType?.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(target.name?.toLowerCase().split('.').pop() || '')
     setPreviewError('')
     setPreviewTextContent('')
     setPreviewOpen(true)
     setContextMenu({ x: 0, y: 0, file: null })
+
+    if (!target.id) {
+      setPreviewError('File identifier is missing.')
+      return
+    }
 
     // Check if token already prefetched in memory for instant preview
     const cached = previewCache.current.get(target.id)
@@ -972,7 +977,24 @@ export function AllFilesPage() {
       )}
       </div>
       <EmptyAreaContextMenu x={emptyContextMenu.x} y={emptyContextMenu.y} open={emptyContextMenu.open} canPasteFolder={Boolean(cutFolder)} onClose={() => setEmptyContextMenu({ x: 0, y: 0, open: false })} onUpload={() => { setUploadOpen(true); setEmptyContextMenu({ x: 0, y: 0, open: false }) }} onCreateFolder={() => { setFolderOpen(true); setEmptyContextMenu({ x: 0, y: 0, open: false }) }} onPasteFolder={() => { pasteFolder().catch((error) => setMessage(error instanceof Error ? error.message : 'Failed to paste folder')); setEmptyContextMenu({ x: 0, y: 0, open: false }) }} />
-      <FileContextMenu x={contextMenu.x} y={contextMenu.y} file={contextMenu.file} onClose={() => setContextMenu({ x: 0, y: 0, file: null })} onView={() => viewFile(contextMenu.file || undefined)} onDownload={downloadFile} onRename={() => { setRenameValue(activeFile?.name ?? ''); setRenameOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }} onMove={() => { setMoveOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }} onTransferStorage={() => openTransferForSingleFile(activeFile!)} onDetails={() => { setDetailOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }} onShare={shareFile} onCopyLink={copyShareLinkDirect} onInvite={inviteToFile} onStar={starActiveFile} onArchive={archiveActiveFile} onDelete={() => { setDeleteOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }} />
+      <FileContextMenu
+        x={contextMenu.x}
+        y={contextMenu.y}
+        file={contextMenu.file}
+        onClose={() => setContextMenu({ x: 0, y: 0, file: null })}
+        onView={(file) => viewFile(file || contextMenu.file || undefined)}
+        onDownload={(file) => { if (file) setActiveFile(file); downloadFile(); }}
+        onRename={(file) => { const f = file || contextMenu.file || activeFile; setActiveFile(f); setRenameValue(f?.name ?? ''); setRenameOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }}
+        onMove={(file) => { const f = file || contextMenu.file || activeFile; setActiveFile(f); setMoveOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }}
+        onTransferStorage={(file) => openTransferForSingleFile(file || contextMenu.file || activeFile!)}
+        onDetails={(file) => { const f = file || contextMenu.file || activeFile; setActiveFile(f); setDetailOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }}
+        onShare={(file) => { if (file) setActiveFile(file); shareFile(); }}
+        onCopyLink={(file) => { if (file) setActiveFile(file); copyShareLinkDirect(); }}
+        onInvite={(file) => { if (file) setActiveFile(file); inviteToFile(); }}
+        onStar={(file) => { if (file) setActiveFile(file); starActiveFile(); }}
+        onArchive={(file) => { if (file) setActiveFile(file); archiveActiveFile(); }}
+        onDelete={(file) => { const f = file || contextMenu.file || activeFile; setActiveFile(f); setDeleteOpen(true); setContextMenu({ x: 0, y: 0, file: null }) }}
+      />
       <FolderContextMenu x={folderContextMenu.x} y={folderContextMenu.y} folder={folderContextMenu.folder} onClose={() => setFolderContextMenu({ x: 0, y: 0, folder: null })} onCut={() => cutSelectedFolder(activeFolderForMenu)} onRename={() => { setFolderRenameValue(activeFolderForMenu?.name ?? ''); setFolderRenameColor(normalizeFolderColor(activeFolderForMenu?.color)); setFolderRenameIconUrl(activeFolderForMenu?.iconUrl ?? defaultFolderIconUrl); setFolderRenameOpen(true); setFolderContextMenu({ x: 0, y: 0, folder: null }) }} onInvite={inviteToFolder} onCopyLink={copyFolderLink} onDelete={() => { setFolderDeleteOpen(true); setFolderContextMenu({ x: 0, y: 0, folder: null }) }} />
       <FileDetailsDrawer open={detailOpen} file={activeFile} onClose={() => setDetailOpen(false)} />
 

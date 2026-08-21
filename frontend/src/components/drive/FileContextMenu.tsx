@@ -8,18 +8,18 @@ type Props = {
   y: number
   file: FileItem | null
   onClose: () => void
-  onView: () => void
-  onDownload: () => void
-  onRename: () => void
-  onMove: () => void
-  onDetails: () => void
-  onShare: () => void
-  onCopyLink: () => void
-  onInvite: () => void
-  onDelete: () => void
-  onStar?: () => void
-  onArchive?: () => void
-  onTransferStorage?: () => void
+  onView: (file?: FileItem) => void
+  onDownload: (file?: FileItem) => void
+  onRename: (file?: FileItem) => void
+  onMove: (file?: FileItem) => void
+  onDetails: (file?: FileItem) => void
+  onShare: (file?: FileItem) => void
+  onCopyLink: (file?: FileItem) => void
+  onInvite: (file?: FileItem) => void
+  onDelete: (file?: FileItem) => void
+  onStar?: (file?: FileItem) => void
+  onArchive?: (file?: FileItem) => void
+  onTransferStorage?: (file?: FileItem) => void
 }
 
 const kindColors: Record<string, string> = {
@@ -54,19 +54,21 @@ function MenuItem({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
       className={[
-        'group relative flex w-full items-center gap-3 rounded-2xl transition-all duration-150 overflow-hidden cursor-pointer',
+        'group relative flex w-full items-center gap-3 rounded-2xl transition-all duration-150 overflow-hidden cursor-pointer select-none',
         isMobile ? 'px-4 py-3 text-sm font-bold min-h-[48px]' : 'px-3 py-2 text-[13px] font-semibold',
         danger
           ? 'text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40'
           : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800/70',
       ].join(' ')}
     >
-      <md-ripple />
       <span
         className={[
-          'flex shrink-0 items-center justify-center rounded-xl transition-all duration-150',
+          'pointer-events-none flex shrink-0 items-center justify-center rounded-xl transition-all duration-150',
           isMobile ? 'h-8 w-8' : 'h-7 w-7',
           danger
             ? 'bg-red-50 text-red-500 group-hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400'
@@ -75,9 +77,9 @@ function MenuItem({
       >
         <Icon className={isMobile ? 'h-4 w-4' : 'h-3.5 w-3.5'} />
       </span>
-      <span className="flex-1 text-left">{label}</span>
+      <span className="pointer-events-none flex-1 text-left">{label}</span>
       {kbd && !isMobile && (
-        <kbd className="hidden rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 group-hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500 sm:inline">
+        <kbd className="pointer-events-none hidden rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 group-hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500 sm:inline">
           {kbd}
         </kbd>
       )}
@@ -176,19 +178,19 @@ export function FileContextMenu({
         }
       >
         <div className="grid gap-1 py-1">
-          <MenuItem icon={Eye} label="Preview file" onClick={() => { onView(); onClose() }} isMobile />
-          <MenuItem icon={Download} label="Download" onClick={() => { onDownload(); onClose() }} isMobile />
-          {onStar && <MenuItem icon={Star} label={file.isStarred ? 'Unstar file' : 'Add to Starred'} onClick={() => { onStar(); onClose() }} isMobile />}
-          <MenuItem icon={Link2} label="Share link" onClick={() => { onShare(); onClose() }} isMobile />
-          <MenuItem icon={Copy} label="Copy link" onClick={() => { onCopyLink(); onClose() }} isMobile />
-          <MenuItem icon={UserPlus} label="Invite member" onClick={() => { onInvite(); onClose() }} isMobile />
-          <MenuItem icon={Edit3} label="Rename file" onClick={() => { onRename(); onClose() }} isMobile />
-          <MenuItem icon={FolderInput} label="Move to folder" onClick={() => { onMove(); onClose() }} isMobile />
-          {onTransferStorage && <MenuItem icon={ArrowRightLeft} label="Transfer Drive Account" onClick={() => { onTransferStorage(); onClose() }} isMobile />}
-          {onArchive && <MenuItem icon={Archive} label={file.isArchived ? 'Unarchive' : 'Archive file'} onClick={() => { onArchive(); onClose() }} isMobile />}
-          <MenuItem icon={Info} label="File details" onClick={() => { onDetails(); onClose() }} isMobile />
+          <MenuItem icon={Eye} label="Preview file" onClick={() => { onView(file); onClose() }} isMobile />
+          <MenuItem icon={Download} label="Download" onClick={() => { onDownload(file); onClose() }} isMobile />
+          {onStar && <MenuItem icon={Star} label={file.isStarred ? 'Unstar file' : 'Add to Starred'} onClick={() => { onStar(file); onClose() }} isMobile />}
+          <MenuItem icon={Link2} label="Share link" onClick={() => { onShare(file); onClose() }} isMobile />
+          <MenuItem icon={Copy} label="Copy link" onClick={() => { onCopyLink(file); onClose() }} isMobile />
+          <MenuItem icon={UserPlus} label="Invite member" onClick={() => { onInvite(file); onClose() }} isMobile />
+          <MenuItem icon={Edit3} label="Rename file" onClick={() => { onRename(file); onClose() }} isMobile />
+          <MenuItem icon={FolderInput} label="Move to folder" onClick={() => { onMove(file); onClose() }} isMobile />
+          {onTransferStorage && <MenuItem icon={ArrowRightLeft} label="Transfer Drive Account" onClick={() => { onTransferStorage(file); onClose() }} isMobile />}
+          {onArchive && <MenuItem icon={Archive} label={file.isArchived ? 'Unarchive' : 'Archive file'} onClick={() => { onArchive(file); onClose() }} isMobile />}
+          <MenuItem icon={Info} label="File details" onClick={() => { onDetails(file); onClose() }} isMobile />
           <div className="my-1.5 h-px bg-slate-100 dark:bg-slate-800" />
-          <MenuItem icon={Trash2} label="Delete file" onClick={() => { onDelete(); onClose() }} danger isMobile />
+          <MenuItem icon={Trash2} label="Delete file" onClick={() => { onDelete(file); onClose() }} danger isMobile />
         </div>
       </MobileBottomSheet>
     )
@@ -237,24 +239,24 @@ export function FileContextMenu({
 
         {/* Actions */}
         <div className="p-1.5">
-          <MenuItem icon={Eye} label="Preview" onClick={() => { onView(); onClose() }} kbd="↵" />
-          <MenuItem icon={Download} label="Download" onClick={() => { onDownload(); onClose() }} />
-          {onStar && <MenuItem icon={Star} label={file.isStarred ? 'Unstar' : 'Add to Starred'} onClick={() => { onStar(); onClose() }} />}
-          <MenuItem icon={Edit3} label="Rename" onClick={() => { onRename(); onClose() }} />
-          <MenuItem icon={FolderInput} label="Move to Folder" onClick={() => { onMove(); onClose() }} />
-          {onTransferStorage && <MenuItem icon={ArrowRightLeft} label="Transfer Drive Account" onClick={() => { onTransferStorage(); onClose() }} />}
-          {onArchive && <MenuItem icon={Archive} label={file.isArchived ? 'Unarchive' : 'Archive'} onClick={() => { onArchive(); onClose() }} />}
-          <MenuItem icon={Info} label="Details" onClick={() => { onDetails(); onClose() }} />
+          <MenuItem icon={Eye} label="Preview" onClick={() => { onView(file); onClose() }} kbd="↵" />
+          <MenuItem icon={Download} label="Download" onClick={() => { onDownload(file); onClose() }} />
+          {onStar && <MenuItem icon={Star} label={file.isStarred ? 'Unstar' : 'Add to Starred'} onClick={() => { onStar(file); onClose() }} />}
+          <MenuItem icon={Edit3} label="Rename" onClick={() => { onRename(file); onClose() }} />
+          <MenuItem icon={FolderInput} label="Move to Folder" onClick={() => { onMove(file); onClose() }} />
+          {onTransferStorage && <MenuItem icon={ArrowRightLeft} label="Transfer Drive Account" onClick={() => { onTransferStorage(file); onClose() }} />}
+          {onArchive && <MenuItem icon={Archive} label={file.isArchived ? 'Unarchive' : 'Archive'} onClick={() => { onArchive(file); onClose() }} />}
+          <MenuItem icon={Info} label="Details" onClick={() => { onDetails(file); onClose() }} />
 
           <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
 
-          <MenuItem icon={Link2} label="Share Link" onClick={() => { onShare(); onClose() }} />
-          <MenuItem icon={Copy} label="Copy Link" onClick={() => { onCopyLink(); onClose() }} kbd="Ctrl+L" />
-          <MenuItem icon={UserPlus} label="Invite Member" onClick={() => { onInvite(); onClose() }} />
+          <MenuItem icon={Link2} label="Share Link" onClick={() => { onShare(file); onClose() }} />
+          <MenuItem icon={Copy} label="Copy Link" onClick={() => { onCopyLink(file); onClose() }} kbd="Ctrl+L" />
+          <MenuItem icon={UserPlus} label="Invite Member" onClick={() => { onInvite(file); onClose() }} />
 
           <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
 
-          <MenuItem icon={Trash2} label="Delete" onClick={() => { onDelete(); onClose() }} danger />
+          <MenuItem icon={Trash2} label="Delete" onClick={() => { onDelete(file); onClose() }} danger />
         </div>
       </div>
     </>
