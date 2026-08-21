@@ -59,6 +59,7 @@ export function FileTable({
   onFileContextMenu,
   onToggleFile,
   onToggleAll,
+  onFileOpen,
   onFileHover
 }: {
   files: FileItem[]
@@ -71,6 +72,7 @@ export function FileTable({
   onFileContextMenu?: (event: MouseEvent<HTMLElement>, file: FileItem) => void
   onToggleFile?: (file: FileItem) => void
   onToggleAll?: () => void
+  onFileOpen?: (file: FileItem) => void
   onFileHover?: (file: FileItem) => void
 }) {
   const [copiedFileId, setCopiedFileId] = useState<string | null>(null)
@@ -97,6 +99,7 @@ export function FileTable({
                 event.dataTransfer.effectAllowed = 'move'
               }}
               onClick={() => onToggleFile?.(file)}
+              onDoubleClick={() => onFileOpen?.(file)}
               onPointerEnter={() => onFileHover?.(file)}
               onContextMenu={(event) => onFileContextMenu?.(event, file)}
               className={cn(
@@ -211,6 +214,7 @@ export function FileTable({
                 }}
                 onContextMenu={(event) => onFileContextMenu?.(event, file)}
                 onClick={() => onToggleFile?.(file)}
+                onDoubleClick={() => onFileOpen?.(file)}
                 onPointerEnter={() => onFileHover?.(file)}
                 className={cn(
                   'group transition-colors duration-150 cursor-grab active:cursor-grabbing text-[13px]',

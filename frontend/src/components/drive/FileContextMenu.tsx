@@ -237,24 +237,24 @@ export function FileContextMenu({
 
         {/* Actions */}
         <div className="p-1.5">
-          <MenuItem icon={Eye} label="Preview" onClick={onView} kbd="↵" />
-          <MenuItem icon={Download} label="Download" onClick={onDownload} />
-          {onStar && <MenuItem icon={Star} label={file.isStarred ? 'Unstar' : 'Add to Starred'} onClick={onStar} />}
-          <MenuItem icon={Edit3} label="Rename" onClick={onRename} />
-          <MenuItem icon={FolderInput} label="Move to Folder" onClick={onMove} />
-          {onTransferStorage && <MenuItem icon={ArrowRightLeft} label="Transfer Drive Account" onClick={onTransferStorage} />}
-          {onArchive && <MenuItem icon={Archive} label={file.isArchived ? 'Unarchive' : 'Archive'} onClick={onArchive} />}
-          <MenuItem icon={Info} label="Details" onClick={onDetails} />
+          <MenuItem icon={Eye} label="Preview" onClick={() => { onView(); onClose() }} kbd="↵" />
+          <MenuItem icon={Download} label="Download" onClick={() => { onDownload(); onClose() }} />
+          {onStar && <MenuItem icon={Star} label={file.isStarred ? 'Unstar' : 'Add to Starred'} onClick={() => { onStar(); onClose() }} />}
+          <MenuItem icon={Edit3} label="Rename" onClick={() => { onRename(); onClose() }} />
+          <MenuItem icon={FolderInput} label="Move to Folder" onClick={() => { onMove(); onClose() }} />
+          {onTransferStorage && <MenuItem icon={ArrowRightLeft} label="Transfer Drive Account" onClick={() => { onTransferStorage(); onClose() }} />}
+          {onArchive && <MenuItem icon={Archive} label={file.isArchived ? 'Unarchive' : 'Archive'} onClick={() => { onArchive(); onClose() }} />}
+          <MenuItem icon={Info} label="Details" onClick={() => { onDetails(); onClose() }} />
 
           <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
 
-          <MenuItem icon={Link2} label="Share Link" onClick={onShare} />
-          <MenuItem icon={Copy} label="Copy Link" onClick={onCopyLink} kbd="Ctrl+L" />
-          <MenuItem icon={UserPlus} label="Invite Member" onClick={onInvite} />
+          <MenuItem icon={Link2} label="Share Link" onClick={() => { onShare(); onClose() }} />
+          <MenuItem icon={Copy} label="Copy Link" onClick={() => { onCopyLink(); onClose() }} kbd="Ctrl+L" />
+          <MenuItem icon={UserPlus} label="Invite Member" onClick={() => { onInvite(); onClose() }} />
 
           <div className="my-1 h-px bg-slate-100 dark:bg-slate-800" />
 
-          <MenuItem icon={Trash2} label="Delete" onClick={onDelete} danger />
+          <MenuItem icon={Trash2} label="Delete" onClick={() => { onDelete(); onClose() }} danger />
         </div>
       </div>
     </>

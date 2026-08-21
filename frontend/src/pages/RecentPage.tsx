@@ -129,6 +129,7 @@ export function RecentPage() {
             sortDirection={sortState.direction}
             onSort={handleHeaderSort}
             onFileContextMenu={(_e, file) => openPreview(file)}
+            onFileOpen={(file) => openPreview(file)}
           />
         )}
       </div>
